@@ -23,9 +23,9 @@ import { authMiddleware } from '../middleware/auth.js';
 import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
-import type { AuthUser } from '../types/index.js';
+import type { AppEnv } from '../types/index.js';
 
-const auth = new Hono();
+const auth = new Hono<AppEnv>();
 
 // POST /api/auth/register
 auth.post('/register', zValidator('json', registerSchema), async (c) => {
@@ -268,7 +268,7 @@ auth.post('/refresh', async (c) => {
 
 // POST /api/auth/logout
 auth.post('/logout', authMiddleware, async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = c.get('user');
   await revokeRefreshTokens(user.id);
   return c.json({ success: true, data: { message: 'Logged out' } });
 });
@@ -290,7 +290,7 @@ auth.post(
 
 // GET /api/auth/me
 auth.get('/me', authMiddleware, async (c) => {
-  const authUser = c.get('user') as AuthUser;
+  const authUser = c.get('user');
   const user = await findUserById(authUser.id);
 
   if (!user) {
@@ -316,7 +316,7 @@ auth.patch(
   authMiddleware,
   zValidator('json', updateProfileSchema),
   async (c) => {
-    const authUser = c.get('user') as AuthUser;
+    const authUser = c.get('user');
     const updates = c.req.valid('json');
 
     await db.update(users).set(updates).where(eq(users.id, authUser.id));
@@ -336,7 +336,7 @@ auth.patch(
 
 // DELETE /api/auth/me
 auth.delete('/me', authMiddleware, async (c) => {
-  const authUser = c.get('user') as AuthUser;
+  const authUser = c.get('user');
   await db.delete(users).where(eq(users.id, authUser.id));
   return c.json({ success: true, data: { message: 'Account deleted' } });
 });

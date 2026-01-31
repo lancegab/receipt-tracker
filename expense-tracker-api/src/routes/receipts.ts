@@ -14,14 +14,14 @@ import {
   deleteObject,
 } from '../services/s3.service.js';
 import { parseReceiptImage } from '../services/llm.service.js';
-import type { AuthUser } from '../types/index.js';
+import type { AppEnv } from '../types/index.js';
 
-const receiptsRouter = new Hono();
+const receiptsRouter = new Hono<AppEnv>();
 receiptsRouter.use('*', authMiddleware);
 
 // GET /api/receipts/presigned-url
 receiptsRouter.get('/presigned-url', async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = c.get('user');
   const filename = c.req.query('filename') || 'receipt.jpg';
   const contentType = c.req.query('contentType') || 'image/jpeg';
 
@@ -35,7 +35,7 @@ receiptsRouter.post(
   '/process',
   zValidator('json', processReceiptSchema),
   async (c) => {
-    const user = c.get('user') as AuthUser;
+    const user = c.get('user');
     const { s3Key, accountId } = c.req.valid('json');
 
     // Fetch image from S3
@@ -66,7 +66,7 @@ receiptsRouter.post(
       s3Key,
       merchantName: parsed.merchant?.name || null,
       merchantAddress: parsed.merchant?.address || null,
-      transactionDate: parsed.transaction?.date || null,
+      transactionDate: parsed.transaction?.date ? new Date(parsed.transaction.date) : null,
       subtotal: parsed.summary?.subtotal != null ? String(parsed.summary.subtotal) : null,
       tax: parsed.summary?.tax != null ? String(parsed.summary.tax) : null,
       total: parsed.summary?.total != null ? String(parsed.summary.total) : null,
@@ -99,7 +99,7 @@ receiptsRouter.post(
 
 // GET /api/receipts
 receiptsRouter.get('/', async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = c.get('user');
   const { page, limit } = paginationSchema.parse(c.req.query());
   const offset = (page - 1) * limit;
 
@@ -116,7 +116,7 @@ receiptsRouter.get('/', async (c) => {
 
 // GET /api/receipts/:id
 receiptsRouter.get('/:id', async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = c.get('user');
   const id = c.req.param('id');
 
   const [receipt] = await db
@@ -133,7 +133,7 @@ receiptsRouter.get('/:id', async (c) => {
 
 // GET /api/receipts/:id/image-url
 receiptsRouter.get('/:id/image-url', async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = c.get('user');
   const id = c.req.param('id');
 
   const [receipt] = await db
@@ -152,7 +152,7 @@ receiptsRouter.get('/:id/image-url', async (c) => {
 
 // DELETE /api/receipts/:id
 receiptsRouter.delete('/:id', async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = c.get('user');
   const id = c.req.param('id');
 
   const [receipt] = await db

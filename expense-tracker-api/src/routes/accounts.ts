@@ -11,14 +11,14 @@ import {
   updateAccountSchema,
   paginationSchema,
 } from '../validators/index.js';
-import type { AuthUser } from '../types/index.js';
+import type { AppEnv } from '../types/index.js';
 
-const accountsRouter = new Hono();
+const accountsRouter = new Hono<AppEnv>();
 accountsRouter.use('*', authMiddleware);
 
 // GET /api/accounts
 accountsRouter.get('/', async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = c.get('user');
 
   const result = await db
     .select()
@@ -34,7 +34,7 @@ accountsRouter.post(
   '/',
   zValidator('json', createAccountSchema),
   async (c) => {
-    const user = c.get('user') as AuthUser;
+    const user = c.get('user');
     const body = c.req.valid('json');
     const id = uuidv4();
 
@@ -61,7 +61,7 @@ accountsRouter.post(
 
 // GET /api/accounts/:id
 accountsRouter.get('/:id', async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = c.get('user');
   const id = c.req.param('id');
 
   const [account] = await db
@@ -81,7 +81,7 @@ accountsRouter.patch(
   '/:id',
   zValidator('json', updateAccountSchema),
   async (c) => {
-    const user = c.get('user') as AuthUser;
+    const user = c.get('user');
     const id = c.req.param('id');
     const body = c.req.valid('json');
 
@@ -118,7 +118,7 @@ accountsRouter.patch(
 
 // DELETE /api/accounts/:id (archive)
 accountsRouter.delete('/:id', async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = c.get('user');
   const id = c.req.param('id');
 
   const [existing] = await db
@@ -140,7 +140,7 @@ accountsRouter.delete('/:id', async (c) => {
 
 // GET /api/accounts/:id/transactions
 accountsRouter.get('/:id/transactions', async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = c.get('user');
   const id = c.req.param('id');
   const { page, limit } = paginationSchema.parse(c.req.query());
 

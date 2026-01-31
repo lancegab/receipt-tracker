@@ -55,3 +55,9 @@ export interface ApiResponse<T = unknown> {
     totalPages: number;
   };
 }
+
+export type AppEnv = {
+  Variables: {
+    user: AuthUser;
+  };
+};

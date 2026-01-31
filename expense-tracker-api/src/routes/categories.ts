@@ -10,14 +10,14 @@ import {
   createCategorySchema,
   updateCategorySchema,
 } from '../validators/index.js';
-import type { AuthUser } from '../types/index.js';
+import type { AppEnv } from '../types/index.js';
 
-const categoriesRouter = new Hono();
+const categoriesRouter = new Hono<AppEnv>();
 categoriesRouter.use('*', authMiddleware);
 
 // GET /api/categories
 categoriesRouter.get('/', async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = c.get('user');
   const type = c.req.query('type') as 'expense' | 'income' | undefined;
 
   const conditions = [
@@ -42,7 +42,7 @@ categoriesRouter.post(
   '/',
   zValidator('json', createCategorySchema),
   async (c) => {
-    const user = c.get('user') as AuthUser;
+    const user = c.get('user');
     const body = c.req.valid('json');
     const id = uuidv4();
 
@@ -71,7 +71,7 @@ categoriesRouter.patch(
   '/:id',
   zValidator('json', updateCategorySchema),
   async (c) => {
-    const user = c.get('user') as AuthUser;
+    const user = c.get('user');
     const id = c.req.param('id');
     const body = c.req.valid('json');
 
@@ -111,7 +111,7 @@ categoriesRouter.patch(
 
 // DELETE /api/categories/:id
 categoriesRouter.delete('/:id', async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = c.get('user');
   const id = c.req.param('id');
 
   const [existing] = await db

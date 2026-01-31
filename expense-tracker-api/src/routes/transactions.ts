@@ -12,9 +12,9 @@ import {
   batchCreateTransactionSchema,
   transactionFiltersSchema,
 } from '../validators/index.js';
-import type { AuthUser } from '../types/index.js';
+import type { AppEnv } from '../types/index.js';
 
-const transactionsRouter = new Hono();
+const transactionsRouter = new Hono<AppEnv>();
 transactionsRouter.use('*', authMiddleware);
 
 async function updateAccountBalance(
@@ -44,7 +44,7 @@ async function updateAccountBalance(
 
 // GET /api/transactions
 transactionsRouter.get('/', async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = c.get('user');
   const filters = transactionFiltersSchema.parse(c.req.query());
   const { page, limit } = filters;
   const offset = (page - 1) * limit;
@@ -61,10 +61,10 @@ transactionsRouter.get('/', async (c) => {
     conditions.push(eq(transactions.type, filters.type));
   }
   if (filters.startDate) {
-    conditions.push(gte(transactions.date, filters.startDate));
+    conditions.push(gte(transactions.date, new Date(filters.startDate)));
   }
   if (filters.endDate) {
-    conditions.push(lte(transactions.date, filters.endDate));
+    conditions.push(lte(transactions.date, new Date(filters.endDate)));
   }
   if (filters.search) {
     conditions.push(like(transactions.description, `%${filters.search}%`));
@@ -104,7 +104,7 @@ transactionsRouter.post(
   '/',
   zValidator('json', createTransactionSchema),
   async (c) => {
-    const user = c.get('user') as AuthUser;
+    const user = c.get('user');
     const body = c.req.valid('json');
     const id = uuidv4();
 
@@ -145,7 +145,7 @@ transactionsRouter.post(
       accountId: body.accountId,
       type: body.type,
       amount: String(body.amount),
-      date: body.date,
+      date: new Date(body.date),
       time: body.time || null,
       description: body.description,
       merchantName: body.merchantName || null,
@@ -183,7 +183,7 @@ transactionsRouter.post(
   '/batch',
   zValidator('json', batchCreateTransactionSchema),
   async (c) => {
-    const user = c.get('user') as AuthUser;
+    const user = c.get('user');
     const { transactions: txns } = c.req.valid('json');
 
     const createdIds: string[] = [];
@@ -198,7 +198,7 @@ transactionsRouter.post(
         accountId: txn.accountId,
         type: txn.type,
         amount: String(txn.amount),
-        date: txn.date,
+        date: new Date(txn.date),
         time: txn.time || null,
         description: txn.description,
         merchantName: txn.merchantName || null,
@@ -232,7 +232,7 @@ transactionsRouter.post(
 
 // GET /api/transactions/:id
 transactionsRouter.get('/:id', async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = c.get('user');
   const id = c.req.param('id');
 
   const [transaction] = await db
@@ -252,7 +252,7 @@ transactionsRouter.patch(
   '/:id',
   zValidator('json', updateTransactionSchema),
   async (c) => {
-    const user = c.get('user') as AuthUser;
+    const user = c.get('user');
     const id = c.req.param('id');
     const body = c.req.valid('json');
 
@@ -306,7 +306,7 @@ transactionsRouter.patch(
 
 // DELETE /api/transactions/:id
 transactionsRouter.delete('/:id', async (c) => {
-  const user = c.get('user') as AuthUser;
+  const user = c.get('user');
   const id = c.req.param('id');
 
   const [existing] = await db
