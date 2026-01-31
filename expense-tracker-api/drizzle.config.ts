@@ -3,8 +3,8 @@ import type { Config } from 'drizzle-kit';
 export default {
   schema: './src/db/schema.ts',
   out: './src/db/migrations',
-  dialect: 'mysql',
+  driver: 'mysql2',
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    uri: process.env.DATABASE_URL!,
   },
 } satisfies Config;
