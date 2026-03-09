@@ -57,7 +57,7 @@ export async function parseReceiptImage(
 ): Promise<LLMParsedReceipt> {
   const base64Image = imageBuffer.toString('base64');
   const geminiKey = process.env.GEMINI_API_KEY;
-  const model = process.env.LLM_MODEL || 'gemini-3.0-flash';
+  const model = process.env.LLM_MODEL || 'gemini-2.5-flash';
 
   if (!geminiKey) {
     throw new Error('GEMINI_API_KEY is not configured');
