@@ -115,20 +115,6 @@ class ApiClient {
     }
   }
 
-  Future<void> uploadFile(String presignedUrl, List<int> bytes,
-      String contentType) async {
-    await Dio().put(
-      presignedUrl,
-      data: Stream.fromIterable([bytes]),
-      options: Options(
-        headers: {
-          'Content-Type': contentType,
-          'Content-Length': bytes.length,
-        },
-      ),
-    );
-  }
-
   AppException _handleError(DioException e) {
     if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.receiveTimeout) {

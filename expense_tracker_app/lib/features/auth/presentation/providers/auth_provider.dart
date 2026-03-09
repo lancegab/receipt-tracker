@@ -108,6 +108,52 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     }
   }
 
+  Future<void> loginWithApple(String idToken) async {
+    state = const AsyncValue.loading();
+    try {
+      final response = await _apiClient.post(
+        ApiConstants.appleAuth,
+        data: {'idToken': idToken},
+      );
+
+      final data = response['data'] as Map<String, dynamic>;
+      await _apiClient.saveTokens(
+        accessToken: data['accessToken'] as String,
+        refreshToken: data['refreshToken'] as String,
+        userId: (data['user'] as Map<String, dynamic>)['id'] as String,
+      );
+
+      state = AsyncValue.data(
+        UserModel.fromJson(data['user'] as Map<String, dynamic>),
+      );
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> loginWithFacebook(String accessToken) async {
+    state = const AsyncValue.loading();
+    try {
+      final response = await _apiClient.post(
+        ApiConstants.facebookAuth,
+        data: {'idToken': accessToken},
+      );
+
+      final data = response['data'] as Map<String, dynamic>;
+      await _apiClient.saveTokens(
+        accessToken: data['accessToken'] as String,
+        refreshToken: data['refreshToken'] as String,
+        userId: (data['user'] as Map<String, dynamic>)['id'] as String,
+      );
+
+      state = AsyncValue.data(
+        UserModel.fromJson(data['user'] as Map<String, dynamic>),
+      );
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
   Future<void> updateProfile({String? displayName, String? defaultCurrency}) async {
     try {
       final response = await _apiClient.patch(

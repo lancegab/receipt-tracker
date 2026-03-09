@@ -13,6 +13,9 @@ import '../features/receipts/presentation/screens/receipt_capture_screen.dart';
 import '../features/receipts/presentation/screens/receipt_review_screen.dart';
 import '../features/categories/presentation/screens/categories_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
+import '../features/reports/presentation/screens/reports_screen.dart';
+import '../features/recurring/presentation/screens/recurring_screen.dart';
+import '../features/recurring/presentation/screens/add_recurring_screen.dart';
 import '../shared/widgets/main_scaffold.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -59,6 +62,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const AccountsScreen(),
           ),
           GoRoute(
+            path: '/reports',
+            builder: (context, state) => const ReportsScreen(),
+          ),
+          GoRoute(
             path: '/settings',
             builder: (context, state) => const SettingsScreen(),
           ),
@@ -98,6 +105,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/categories',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const CategoriesScreen(),
+      ),
+      GoRoute(
+        path: '/recurring',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const RecurringScreen(),
+      ),
+      GoRoute(
+        path: '/add-recurring',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AddRecurringScreen(),
       ),
     ],
   );

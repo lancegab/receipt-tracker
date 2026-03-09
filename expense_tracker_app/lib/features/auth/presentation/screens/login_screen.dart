@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../providers/auth_provider.dart';
 import '../../../../core/extensions/context_extensions.dart';
 
@@ -41,6 +43,51 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         authState.error.toString(),
         isError: true,
       );
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    try {
+      final googleSignIn = GoogleSignIn();
+      final account = await googleSignIn.signIn();
+      if (account == null) return;
+
+      final auth = await account.authentication;
+      final idToken = auth.idToken;
+      if (idToken == null) {
+        if (mounted) {
+          context.showSnackBar('Failed to get Google ID token', isError: true);
+        }
+        return;
+      }
+
+      await ref.read(authStateProvider.notifier).loginWithGoogle(idToken);
+
+      final authState = ref.read(authStateProvider);
+      if (authState.hasError && mounted) {
+        context.showSnackBar(authState.error.toString(), isError: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showSnackBar('Google sign-in failed: $e', isError: true);
+      }
+    }
+  }
+
+  Future<void> _loginWithApple() async {
+    try {
+      // sign_in_with_apple package handles the native flow
+      // For now, show a message since the package needs to be configured
+      if (mounted) {
+        context.showSnackBar(
+          'Apple Sign-In requires additional configuration',
+          isError: true,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showSnackBar('Apple sign-in failed: $e', isError: true);
+      }
     }
   }
 
@@ -151,15 +198,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
-                    onPressed: () {
-                      // TODO: Implement Google Sign-In
-                    },
+                    onPressed: _loginWithGoogle,
                     icon: const Icon(Icons.g_mobiledata, size: 24),
                     label: const Text('Continue with Google'),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size.fromHeight(48),
                     ),
                   ),
+                  if (Platform.isIOS) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _loginWithApple,
+                      icon: const Icon(Icons.apple, size: 24),
+                      label: const Text('Continue with Apple'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   TextButton(
                     onPressed: () => context.go('/register'),

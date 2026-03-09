@@ -77,7 +77,8 @@ export const batchCreateTransactionSchema = z.object({
 
 // Receipt validators
 export const processReceiptSchema = z.object({
-  s3Key: z.string().min(1),
+  imageBase64: z.string().min(1),
+  contentType: z.string().default('image/jpeg'),
   accountId: z.string().uuid().optional(),
 });
 
@@ -99,6 +100,27 @@ export const updateCategorySchema = z.object({
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
     .optional(),
+  isActive: z.boolean().optional(),
+});
+
+// Recurring transaction validators
+export const createRecurringSchema = z.object({
+  accountId: z.string().uuid(),
+  type: z.enum(['expense', 'income', 'transfer']),
+  amount: z.number().positive(),
+  description: z.string().min(1).max(255),
+  categoryId: z.string().uuid().optional(),
+  frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+export const updateRecurringSchema = z.object({
+  amount: z.number().positive().optional(),
+  description: z.string().min(1).max(255).optional(),
+  categoryId: z.string().uuid().nullable().optional(),
+  frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   isActive: z.boolean().optional(),
 });
 

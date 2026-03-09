@@ -1,12 +1,16 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { HTTPException } from 'hono/http-exception';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { v4 as uuidv4 } from 'uuid';
+import bcrypt from 'bcryptjs';
 import {
   registerSchema,
   loginSchema,
   oauthSchema,
   updateProfileSchema,
   forgotPasswordSchema,
+  resetPasswordSchema,
 } from '../validators/index.js';
 import {
   hashPassword,
@@ -19,11 +23,16 @@ import {
   findUserById,
   createUser,
 } from '../services/auth.service.js';
+import { sendPasswordResetEmail } from '../services/email.service.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { db } from '../db/index.js';
-import { users } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { users, passwordResetTokens } from '../db/schema.js';
+import { eq, and, isNull } from 'drizzle-orm';
 import type { AppEnv } from '../types/index.js';
+
+const APPLE_JWKS = createRemoteJWKSet(
+  new URL('https://appleid.apple.com/auth/keys')
+);
 
 const auth = new Hono<AppEnv>();
 
@@ -201,14 +210,15 @@ auth.post('/facebook', zValidator('json', oauthSchema), async (c) => {
 auth.post('/apple', zValidator('json', oauthSchema), async (c) => {
   const { idToken } = c.req.valid('json');
 
-  // Decode Apple ID token (in production, verify with Apple's public keys)
-  let payload: { email: string; sub: string };
+  // Verify Apple ID token using JWKS
+  let payload: { email?: string; sub: string };
   try {
-    const parts = idToken.split('.');
-    const decoded = JSON.parse(
-      Buffer.from(parts[1], 'base64').toString()
-    );
-    payload = { email: decoded.email, sub: decoded.sub };
+    const audience = process.env.APPLE_SERVICE_ID || process.env.APPLE_BUNDLE_ID;
+    const { payload: verified } = await jwtVerify(idToken, APPLE_JWKS, {
+      issuer: 'https://appleid.apple.com',
+      audience: audience || undefined,
+    });
+    payload = { email: verified.email as string | undefined, sub: verified.sub! };
   } catch {
     throw new HTTPException(401, { message: 'Invalid Apple token' });
   }
@@ -279,11 +289,73 @@ auth.post(
   zValidator('json', forgotPasswordSchema),
   async (c) => {
     const { email } = c.req.valid('json');
-    // In production: generate reset token, send email
-    // For now, return success regardless (prevent email enumeration)
+
+    // Always return success to prevent email enumeration
+    const user = await findUserByEmail(email);
+    if (user && user.authProvider === 'email') {
+      const token = uuidv4();
+      const tokenHash = await bcrypt.hash(token, 10);
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await db.insert(passwordResetTokens).values({
+        id: uuidv4(),
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      });
+
+      await sendPasswordResetEmail(email, token);
+    }
+
     return c.json({
       success: true,
       data: { message: 'If that email exists, a reset link has been sent' },
+    });
+  }
+);
+
+// POST /api/auth/reset-password
+auth.post(
+  '/reset-password',
+  zValidator('json', resetPasswordSchema),
+  async (c) => {
+    const { token, password } = c.req.valid('json');
+
+    // Find unused, non-expired reset tokens
+    const allTokens = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(isNull(passwordResetTokens.usedAt));
+
+    let matchedToken: (typeof allTokens)[0] | null = null;
+    for (const t of allTokens) {
+      if (new Date(t.expiresAt) < new Date()) continue;
+      if (await bcrypt.compare(token, t.tokenHash)) {
+        matchedToken = t;
+        break;
+      }
+    }
+
+    if (!matchedToken) {
+      throw new HTTPException(400, { message: 'Invalid or expired reset token' });
+    }
+
+    // Update password
+    const passwordHash = await hashPassword(password);
+    await db
+      .update(users)
+      .set({ passwordHash })
+      .where(eq(users.id, matchedToken.userId));
+
+    // Mark token as used
+    await db
+      .update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResetTokens.id, matchedToken.id));
+
+    return c.json({
+      success: true,
+      data: { message: 'Password has been reset successfully' },
     });
   }
 );

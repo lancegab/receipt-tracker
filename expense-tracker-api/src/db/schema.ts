@@ -94,7 +94,7 @@ export const receipts = mysqlTable(
     userId: char('user_id', { length: 36 })
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    s3Key: varchar('s3_key', { length: 500 }).notNull(),
+    s3Key: varchar('s3_key', { length: 500 }),
     s3ThumbnailKey: varchar('s3_thumbnail_key', { length: 500 }),
     merchantName: varchar('merchant_name', { length: 200 }),
     merchantAddress: text('merchant_address'),
@@ -149,6 +149,61 @@ export const transactions = mysqlTable(
     accountIdx: index('idx_account').on(table.accountId),
     categoryIdx: index('idx_category').on(table.categoryId),
     receiptIdx: index('idx_receipt').on(table.receiptId),
+  })
+);
+
+export const passwordResetTokens = mysqlTable(
+  'password_reset_tokens',
+  {
+    id: char('id', { length: 36 }).primaryKey(),
+    userId: char('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: varchar('token_hash', { length: 255 }).notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
+    usedAt: timestamp('used_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    userIdx: index('idx_reset_user_id').on(table.userId),
+  })
+);
+
+export const recurringTransactions = mysqlTable(
+  'recurring_transactions',
+  {
+    id: char('id', { length: 36 }).primaryKey(),
+    userId: char('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    accountId: char('account_id', { length: 36 })
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    type: mysqlEnum('type', ['expense', 'income', 'transfer']).notNull(),
+    amount: decimal('amount', { precision: 15, scale: 2 }).notNull(),
+    description: varchar('description', { length: 255 }).notNull(),
+    categoryId: char('category_id', { length: 36 }).references(
+      () => categories.id,
+      { onDelete: 'set null' }
+    ),
+    frequency: mysqlEnum('frequency', [
+      'daily',
+      'weekly',
+      'biweekly',
+      'monthly',
+      'quarterly',
+      'yearly',
+    ]).notNull(),
+    startDate: date('start_date').notNull(),
+    endDate: date('end_date'),
+    nextOccurrence: date('next_occurrence').notNull(),
+    isActive: boolean('is_active').default(true),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+  },
+  (table) => ({
+    userIdx: index('idx_recurring_user_id').on(table.userId),
+    nextIdx: index('idx_recurring_next').on(table.nextOccurrence),
   })
 );
 

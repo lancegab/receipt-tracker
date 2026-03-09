@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import routes from './routes/index.js';
 import { errorHandler } from './middleware/error.js';
+import { rateLimitMiddleware } from './middleware/rateLimit.js';
 
 const app = new Hono();
 
@@ -17,6 +18,10 @@ app.use(
     maxAge: 86400,
   })
 );
+
+// Rate limiting
+app.use('*', rateLimitMiddleware({ windowMs: 60_000, maxRequests: 100 }));
+app.use('/api/auth/*', rateLimitMiddleware({ windowMs: 60_000, maxRequests: 20 }));
 
 // Health check
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));

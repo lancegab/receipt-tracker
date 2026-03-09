@@ -56,57 +56,65 @@ export async function parseReceiptImage(
   contentType: string = 'image/jpeg'
 ): Promise<LLMParsedReceipt> {
   const base64Image = imageBuffer.toString('base64');
-  const model = process.env.LLM_MODEL || 'gpt-4o';
-  const apiKey = process.env.OPENAI_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const model = process.env.LLM_MODEL || 'gemini-2.0-flash';
 
-  if (!apiKey) {
-    throw new Error('OPENAI_API_KEY is not configured');
+  if (!geminiKey) {
+    throw new Error('GEMINI_API_KEY is not configured');
   }
+
+  // Map MIME type to Gemini format
+  const mimeType = contentType || 'image/jpeg';
 
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: LLM_PROMPT },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:${contentType};base64,${base64Image}`,
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: LLM_PROMPT },
+                  {
+                    inlineData: {
+                      mimeType,
+                      data: base64Image,
+                    },
                   },
-                },
-              ],
+                ],
+              },
+            ],
+            generationConfig: {
+              responseMimeType: 'application/json',
+              maxOutputTokens: 2000,
             },
-          ],
-          max_tokens: 2000,
-          response_format: { type: 'json_object' },
-        }),
-        signal: AbortSignal.timeout(30000),
-      });
+          }),
+          signal: AbortSignal.timeout(30000),
+        }
+      );
 
       if (!response.ok) {
         const errorBody = await response.text();
-        throw new Error(`LLM API error (${response.status}): ${errorBody}`);
+        throw new Error(`Gemini API error (${response.status}): ${errorBody}`);
       }
 
-      const data = await response.json() as {
-        choices: Array<{ message: { content: string } }>;
+      const data = (await response.json()) as {
+        candidates: Array<{
+          content: { parts: Array<{ text: string }> };
+        }>;
       };
-      const content = data.choices[0]?.message?.content;
+
+      const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
       if (!content) {
-        throw new Error('Empty response from LLM API');
+        throw new Error('Empty response from Gemini API');
       }
 
       return JSON.parse(content) as LLMParsedReceipt;

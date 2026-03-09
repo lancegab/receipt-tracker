@@ -4,6 +4,7 @@ import accounts from './accounts.js';
 import transactions from './transactions.js';
 import receipts from './receipts.js';
 import categories from './categories.js';
+import recurring from './recurring.js';
 
 const routes = new Hono();
 
@@ -12,5 +13,6 @@ routes.route('/accounts', accounts);
 routes.route('/transactions', transactions);
 routes.route('/receipts', receipts);
 routes.route('/categories', categories);
+routes.route('/recurring', recurring);
 
 export default routes;

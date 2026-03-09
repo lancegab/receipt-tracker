@@ -1,11 +1,11 @@
 class ApiConstants {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:3000/api',
+    defaultValue: 'https://api.receipt.lagablab.com/api',
   );
 
   static const Duration connectTimeout = Duration(seconds: 30);
-  static const Duration receiveTimeout = Duration(seconds: 30);
+  static const Duration receiveTimeout = Duration(seconds: 90);
 
   // Auth endpoints
   static const String register = '/auth/register';
@@ -25,10 +25,12 @@ class ApiConstants {
   static const String batchTransactions = '/transactions/batch';
 
   // Receipt endpoints
-  static const String presignedUrl = '/receipts/presigned-url';
   static const String processReceipt = '/receipts/process';
   static const String receipts = '/receipts';
 
   // Category endpoints
   static const String categories = '/categories';
+
+  // Recurring endpoints
+  static const String recurring = '/recurring';
 }

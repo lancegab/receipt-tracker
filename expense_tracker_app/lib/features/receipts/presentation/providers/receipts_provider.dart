@@ -1,5 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../shared/models/receipt_model.dart';
@@ -26,32 +29,35 @@ class ReceiptsNotifier extends StateNotifier<AsyncValue<ReceiptModel?>> {
   ) async {
     state = const AsyncValue.loading();
     try {
-      // 1. Get presigned URL
-      final presignedResponse = await _apiClient.get(
-        ApiConstants.presignedUrl,
-        queryParameters: {
-          'filename': filename,
+      // 1. Save image locally on device
+      final appDir = await getApplicationDocumentsDirectory();
+      final receiptsDir = Directory('${appDir.path}/receipts');
+      if (!await receiptsDir.exists()) {
+        await receiptsDir.create(recursive: true);
+      }
+      final localPath = '${receiptsDir.path}/$filename';
+      final file = File(localPath);
+      await file.writeAsBytes(imageBytes);
+
+      // 2. Encode image to base64 and send to backend for processing
+      final base64Image = base64Encode(imageBytes);
+      final processResponse = await _apiClient.post(
+        ApiConstants.processReceipt,
+        data: {
+          'imageBase64': base64Image,
           'contentType': 'image/jpeg',
         },
       );
 
-      final data = presignedResponse['data'] as Map<String, dynamic>;
-      final uploadUrl = data['uploadUrl'] as String;
-      final s3Key = data['s3Key'] as String;
-
-      // 2. Upload to S3
-      await _apiClient.uploadFile(uploadUrl, imageBytes, 'image/jpeg');
-
-      // 3. Process receipt via LLM
-      final processResponse = await _apiClient.post(
-        ApiConstants.processReceipt,
-        data: {'s3Key': s3Key},
-      );
-
       if (processResponse['success'] == true) {
-        final receipt = ReceiptModel.fromJson(
-          processResponse['data'] as Map<String, dynamic>,
-        );
+        final receiptData =
+            processResponse['data'] as Map<String, dynamic>;
+        // Inject local image path into receipt data
+        if (receiptData['receipt'] is Map<String, dynamic>) {
+          (receiptData['receipt'] as Map<String, dynamic>)['imageUrl'] =
+              localPath;
+        }
+        final receipt = ReceiptModel.fromJson(receiptData);
         state = AsyncValue.data(receipt);
         return receipt;
       }

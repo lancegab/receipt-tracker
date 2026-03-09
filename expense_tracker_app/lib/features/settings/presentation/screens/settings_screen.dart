@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
+import '../../../../features/auth/presentation/providers/biometric_provider.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/constants/app_constants.dart';
 
@@ -12,6 +13,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
     final user = authState.valueOrNull;
+    final biometric = ref.watch(biometricProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -66,7 +68,26 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/categories'),
           ),
+          // Recurring Transactions
+          ListTile(
+            leading: const Icon(Icons.repeat),
+            title: const Text('Recurring Transactions'),
+            subtitle: const Text('Manage recurring income and expenses'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/recurring'),
+          ),
           const Divider(),
+          // Biometric lock
+          if (biometric.isAvailable)
+            SwitchListTile(
+              secondary: const Icon(Icons.fingerprint),
+              title: const Text('Biometric Lock'),
+              subtitle: const Text('Require authentication on app resume'),
+              value: biometric.isEnabled,
+              onChanged: (value) {
+                ref.read(biometricProvider.notifier).setEnabled(value);
+              },
+            ),
           // Display name
           ListTile(
             leading: const Icon(Icons.person),
