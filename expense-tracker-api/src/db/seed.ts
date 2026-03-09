@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { db } from './index.js';
 import { categories } from './schema.js';
+import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 
 const defaultExpenseCategories = [
@@ -30,6 +31,13 @@ const defaultIncomeCategories = [
 
 async function seed() {
   console.log('Seeding default categories...');
+
+  // Check if system categories already exist
+  const existing = await db.select().from(categories).where(eq(categories.isSystem, true)).limit(1);
+  if (existing.length > 0) {
+    console.log('System categories already exist, skipping seed.');
+    process.exit(0);
+  }
 
   const expenseValues = defaultExpenseCategories.map((cat) => ({
     id: uuidv4(),

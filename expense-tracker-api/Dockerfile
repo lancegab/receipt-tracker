@@ -21,4 +21,4 @@ COPY src/db ./src/db
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx drizzle-kit push && npx tsx src/db/seed.ts && node dist/index.js"]
+CMD ["sh", "-c", "npx drizzle-kit push && (npx tsx src/db/seed.ts || echo 'Seed skipped') && node dist/index.js"]

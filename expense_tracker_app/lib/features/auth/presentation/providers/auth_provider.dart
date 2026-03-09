@@ -43,7 +43,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       await _apiClient.saveTokens(
         accessToken: data['accessToken'] as String,
         refreshToken: data['refreshToken'] as String,
-        userId: (data['user'] as Map<String, dynamic>)['id'] as String,
+        userId: (data['user'] as Map<String, dynamic>)['id'].toString(),
       );
 
       state = AsyncValue.data(
@@ -74,7 +74,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       await _apiClient.saveTokens(
         accessToken: data['accessToken'] as String,
         refreshToken: data['refreshToken'] as String,
-        userId: (data['user'] as Map<String, dynamic>)['id'] as String,
+        userId: (data['user'] as Map<String, dynamic>)['id'].toString(),
       );
 
       state = AsyncValue.data(
@@ -97,7 +97,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       await _apiClient.saveTokens(
         accessToken: data['accessToken'] as String,
         refreshToken: data['refreshToken'] as String,
-        userId: (data['user'] as Map<String, dynamic>)['id'] as String,
+        userId: (data['user'] as Map<String, dynamic>)['id'].toString(),
       );
 
       state = AsyncValue.data(
@@ -120,7 +120,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       await _apiClient.saveTokens(
         accessToken: data['accessToken'] as String,
         refreshToken: data['refreshToken'] as String,
-        userId: (data['user'] as Map<String, dynamic>)['id'] as String,
+        userId: (data['user'] as Map<String, dynamic>)['id'].toString(),
       );
 
       state = AsyncValue.data(
@@ -143,7 +143,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       await _apiClient.saveTokens(
         accessToken: data['accessToken'] as String,
         refreshToken: data['refreshToken'] as String,
-        userId: (data['user'] as Map<String, dynamic>)['id'] as String,
+        userId: (data['user'] as Map<String, dynamic>)['id'].toString(),
       );
 
       state = AsyncValue.data(

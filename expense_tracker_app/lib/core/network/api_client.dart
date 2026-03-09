@@ -125,7 +125,16 @@ class ApiClient {
     }
 
     final statusCode = e.response?.statusCode;
-    final message = e.response?.data?['error'] as String? ?? e.message ?? 'Unknown error';
+    final data = e.response?.data;
+    String message;
+    if (data is Map<String, dynamic>) {
+      message = data['error'] as String? ??
+          data['message'] as String? ??
+          e.message ??
+          'Unknown error';
+    } else {
+      message = e.message ?? 'Unknown error';
+    }
 
     switch (statusCode) {
       case 401:
