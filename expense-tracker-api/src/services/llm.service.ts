@@ -102,7 +102,12 @@ export async function parseReceiptImage(
 
       if (!response.ok) {
         const errorBody = await response.text();
-        throw new Error(`Gemini API error (${response.status}): ${errorBody}`);
+        const err = new Error(`Gemini API error (${response.status}): ${errorBody}`);
+        // Don't retry on quota/auth errors
+        if (response.status === 429 || response.status === 401 || response.status === 403) {
+          throw Object.assign(err, { noRetry: true });
+        }
+        throw err;
       }
 
       const data = (await response.json()) as {
@@ -120,6 +125,7 @@ export async function parseReceiptImage(
       return JSON.parse(content) as LLMParsedReceipt;
     } catch (err) {
       lastError = err as Error;
+      if ((err as any).noRetry) break;
       if (attempt < MAX_RETRIES) {
         await sleep(RETRY_DELAY_MS * Math.pow(2, attempt - 1));
       }
