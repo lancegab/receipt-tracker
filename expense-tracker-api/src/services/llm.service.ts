@@ -93,10 +93,10 @@ export async function parseReceiptImage(
             ],
             generationConfig: {
               responseMimeType: 'application/json',
-              maxOutputTokens: 2000,
+              maxOutputTokens: 8000,
             },
           }),
-          signal: AbortSignal.timeout(30000),
+          signal: AbortSignal.timeout(120000),
         }
       );
 
