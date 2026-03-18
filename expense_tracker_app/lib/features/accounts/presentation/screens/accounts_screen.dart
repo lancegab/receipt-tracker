@@ -23,6 +23,28 @@ class AccountsScreen extends ConsumerWidget {
         title: const Text('Accounts'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.sync),
+            tooltip: 'Recalculate balances',
+            onPressed: () async {
+              try {
+                await ref
+                    .read(accountsProvider.notifier)
+                    .recalculateBalances();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Balances recalculated')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              }
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => context.push('/add-account'),
           ),

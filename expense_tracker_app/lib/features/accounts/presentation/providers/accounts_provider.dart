@@ -68,4 +68,9 @@ class AccountsNotifier extends StateNotifier<AsyncValue<List<AccountModel>>> {
     await _apiClient.delete('${ApiConstants.accounts}/$id');
     await loadAccounts();
   }
+
+  Future<void> recalculateBalances() async {
+    await _apiClient.post(ApiConstants.recalculateBalances);
+    await loadAccounts();
+  }
 }

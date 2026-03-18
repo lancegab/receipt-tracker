@@ -19,6 +19,7 @@ class ApiConstants {
 
   // Account endpoints
   static const String accounts = '/accounts';
+  static const String recalculateBalances = '/accounts/recalculate';
 
   // Transaction endpoints
   static const String transactions = '/transactions';

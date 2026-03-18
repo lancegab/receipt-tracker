@@ -4,7 +4,7 @@ import { HTTPException } from 'hono/http-exception';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/index.js';
 import { accounts, transactions } from '../db/schema.js';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth.js';
 import {
   createAccountSchema,
@@ -58,6 +58,60 @@ accountsRouter.post(
     return c.json({ success: true, data: account }, 201);
   }
 );
+
+// POST /api/accounts/recalculate - Recalculate all account balances from transactions
+accountsRouter.post('/recalculate', async (c) => {
+  const user = c.get('user');
+
+  const userAccounts = await db
+    .select()
+    .from(accounts)
+    .where(eq(accounts.userId, user.id));
+
+  const results: Array<{ id: string; name: string; oldBalance: string; newBalance: string }> = [];
+
+  for (const account of userAccounts) {
+    const [{ total }] = await db
+      .select({
+        total: sql<string>`COALESCE(
+          SUM(CASE
+            WHEN ${transactions.type} = 'expense' THEN -${transactions.amount}
+            WHEN ${transactions.type} = 'income' THEN ${transactions.amount}
+            ELSE 0
+          END), 0)`,
+      })
+      .from(transactions)
+      .where(eq(transactions.accountId, account.id));
+
+    const [{ transferIn }] = await db
+      .select({
+        transferIn: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.transferToAccountId, account.id),
+          eq(transactions.type, 'transfer')
+        )
+      );
+
+    const newBalance = (parseFloat(total) + parseFloat(transferIn)).toFixed(2);
+
+    await db
+      .update(accounts)
+      .set({ balance: newBalance })
+      .where(eq(accounts.id, account.id));
+
+    results.push({
+      id: account.id,
+      name: account.name,
+      oldBalance: account.balance?.toString() ?? '0.00',
+      newBalance,
+    });
+  }
+
+  return c.json({ success: true, data: results });
+});
 
 // GET /api/accounts/:id
 accountsRouter.get('/:id', async (c) => {
