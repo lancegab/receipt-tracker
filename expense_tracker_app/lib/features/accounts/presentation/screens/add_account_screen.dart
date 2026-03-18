@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/accounts_provider.dart';
+import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../core/extensions/context_extensions.dart';
+import '../../../../core/utils/currency_formatter.dart';
 
 class AddAccountScreen extends ConsumerStatefulWidget {
   const AddAccountScreen({super.key});
@@ -19,7 +21,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
   final _closeController = TextEditingController();
   final _dueController = TextEditingController();
   String _type = 'bank';
-  String _currency = 'USD';
+  String? _currency;
   bool _isLoading = false;
 
   @override
@@ -32,6 +34,14 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
     super.dispose();
   }
 
+  String get _effectiveCurrency {
+    if (_currency != null) return _currency!;
+    final user = ref.read(authStateProvider).valueOrNull;
+    return user?.defaultCurrency ?? 'PHP';
+  }
+
+  String get _currencySymbol => CurrencyFormatter.getSymbol(_effectiveCurrency);
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -40,16 +50,18 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
       final data = {
         'name': _nameController.text.trim(),
         'type': _type,
-        'currency': _currency,
+        'currency': _effectiveCurrency,
         'balance': double.tryParse(_balanceController.text) ?? 0,
       };
 
       if (_type == 'credit_card') {
         if (_creditLimitController.text.isNotEmpty) {
-          data['creditLimit'] = double.tryParse(_creditLimitController.text) ?? 0;
+          data['creditLimit'] =
+              double.tryParse(_creditLimitController.text) ?? 0;
         }
         if (_closeController.text.isNotEmpty) {
-          data['statementCloseDay'] = int.tryParse(_closeController.text) ?? 1;
+          data['statementCloseDay'] =
+              int.tryParse(_closeController.text) ?? 1;
         }
         if (_dueController.text.isNotEmpty) {
           data['paymentDueDay'] = int.tryParse(_dueController.text) ?? 1;
@@ -65,8 +77,58 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
     }
   }
 
+  void _showCurrencyPicker() {
+    final current = _effectiveCurrency;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        minChildSize: 0.4,
+        expand: false,
+        builder: (context, scrollController) => Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Select Currency',
+                  style: Theme.of(context).textTheme.titleMedium),
+            ),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                itemCount: CurrencyFormatter.currencies.length,
+                itemBuilder: (context, index) {
+                  final c = CurrencyFormatter.currencies[index];
+                  final isSelected = c.code == current;
+                  return ListTile(
+                    leading: Text(c.flag, style: const TextStyle(fontSize: 24)),
+                    title: Text(c.code,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(c.name),
+                    trailing: isSelected
+                        ? Icon(Icons.check,
+                            color: Theme.of(context).colorScheme.primary)
+                        : Text(c.symbol,
+                            style: Theme.of(context).textTheme.bodyLarge),
+                    onTap: () {
+                      setState(() => _currency = c.code);
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final currencyData = CurrencyFormatter.getCurrency(_effectiveCurrency);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Add Account')),
       body: SingleChildScrollView(
@@ -88,28 +150,48 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                 decoration: const InputDecoration(labelText: 'Account Type'),
                 items: const [
                   DropdownMenuItem(value: 'cash', child: Text('Cash')),
-                  DropdownMenuItem(value: 'bank', child: Text('Bank/Checking')),
+                  DropdownMenuItem(
+                      value: 'bank', child: Text('Bank/Checking')),
                   DropdownMenuItem(value: 'savings', child: Text('Savings')),
-                  DropdownMenuItem(value: 'wallet', child: Text('Digital Wallet')),
-                  DropdownMenuItem(value: 'credit_card', child: Text('Credit Card')),
+                  DropdownMenuItem(
+                      value: 'wallet', child: Text('Digital Wallet')),
+                  DropdownMenuItem(
+                      value: 'credit_card', child: Text('Credit Card')),
                 ],
                 onChanged: (v) => setState(() => _type = v ?? 'bank'),
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _currency,
-                decoration: const InputDecoration(labelText: 'Currency'),
-                items: ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'PHP']
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (v) => setState(() => _currency = v ?? 'USD'),
+              // Currency picker
+              InkWell(
+                onTap: _showCurrencyPicker,
+                child: InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Currency'),
+                  child: Row(
+                    children: [
+                      if (currencyData != null) ...[
+                        Text(currencyData.flag,
+                            style: const TextStyle(fontSize: 20)),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(_effectiveCurrency,
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      if (currencyData != null) ...[
+                        const SizedBox(width: 8),
+                        Text('- ${currencyData.name}',
+                            style: Theme.of(context).textTheme.bodyMedium),
+                      ],
+                      const Spacer(),
+                      const Icon(Icons.arrow_drop_down),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _balanceController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Initial Balance',
-                  prefixText: '\$ ',
+                  prefixText: '$_currencySymbol ',
                 ),
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
@@ -118,9 +200,9 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _creditLimitController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Credit Limit',
-                    prefixText: '\$ ',
+                    prefixText: '$_currencySymbol ',
                   ),
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),

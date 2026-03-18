@@ -5,6 +5,7 @@ import '../providers/accounts_provider.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/models/account_model.dart';
+import '../../../../features/auth/presentation/providers/auth_provider.dart';
 
 class AccountsScreen extends ConsumerWidget {
   const AccountsScreen({super.key});
@@ -14,6 +15,8 @@ class AccountsScreen extends ConsumerWidget {
     final accountsAsync = ref.watch(accountsProvider);
     final totalBalance = ref.watch(totalBalanceProvider);
     final totalCredit = ref.watch(totalCreditPayableProvider);
+    final userCurrency =
+        ref.watch(authStateProvider).valueOrNull?.defaultCurrency ?? 'PHP';
 
     return Scaffold(
       appBar: AppBar(
@@ -58,6 +61,7 @@ class AccountsScreen extends ConsumerWidget {
                         title: 'Total Balance',
                         amount: totalBalance,
                         color: context.colorScheme.primary,
+                        currency: userCurrency,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -66,6 +70,7 @@ class AccountsScreen extends ConsumerWidget {
                         title: 'Credit Payable',
                         amount: totalCredit,
                         color: context.colorScheme.error,
+                        currency: userCurrency,
                       ),
                     ),
                   ],
@@ -115,11 +120,13 @@ class _SummaryCard extends StatelessWidget {
   final String title;
   final double amount;
   final Color color;
+  final String currency;
 
   const _SummaryCard({
     required this.title,
     required this.amount,
     required this.color,
+    this.currency = 'PHP',
   });
 
   @override
@@ -133,12 +140,14 @@ class _SummaryCard extends StatelessWidget {
           children: [
             Text(title, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 4),
-            Text(
-              CurrencyFormatter.format(amount),
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
+            FittedBox(
+              child: Text(
+                CurrencyFormatter.format(amount, currency: currency),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+              ),
             ),
           ],
         ),

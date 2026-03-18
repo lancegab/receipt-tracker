@@ -6,6 +6,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../features/accounts/presentation/providers/accounts_provider.dart';
+import '../../../../features/auth/presentation/providers/auth_provider.dart';
 
 class TransactionsScreen extends ConsumerWidget {
   const TransactionsScreen({super.key});
@@ -14,6 +15,8 @@ class TransactionsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final txnsAsync = ref.watch(transactionsProvider);
     final totalBalance = ref.watch(totalBalanceProvider);
+    final userCurrency =
+        ref.watch(authStateProvider).valueOrNull?.defaultCurrency ?? 'PHP';
 
     return Scaffold(
       appBar: AppBar(
@@ -42,7 +45,8 @@ class TransactionsScreen extends ConsumerWidget {
                     style: context.textTheme.bodyMedium),
                 const SizedBox(height: 4),
                 Text(
-                  CurrencyFormatter.format(totalBalance),
+                  CurrencyFormatter.format(totalBalance,
+                      currency: userCurrency),
                   style: context.textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),

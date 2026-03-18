@@ -140,7 +140,7 @@ class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
                           subtitle: Text(DateFormatter.formatRelative(
                               DateTime.parse(txn.date))),
                           trailing: Text(
-                            '${txn.type == 'income' ? '+' : '-'}${CurrencyFormatter.format(txn.amount)}',
+                            '${txn.type == 'income' ? '+' : '-'}${CurrencyFormatter.format(txn.amount, currency: account.currency)}',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: txn.type == 'income'

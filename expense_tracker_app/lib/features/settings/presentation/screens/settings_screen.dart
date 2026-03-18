@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../features/auth/presentation/providers/biometric_provider.dart';
 import '../../../../core/extensions/context_extensions.dart';
-import '../../../../core/constants/app_constants.dart';
+import '../../../../core/utils/currency_formatter.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -51,15 +51,21 @@ class SettingsScreen extends ConsumerWidget {
             ),
           const Divider(),
           // Currency
-          ListTile(
-            leading: const Icon(Icons.attach_money),
-            title: const Text('Default Currency'),
-            subtitle: Text(user?.defaultCurrency ?? 'USD'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              _showCurrencyPicker(context, ref, user?.defaultCurrency ?? 'USD');
-            },
-          ),
+          Builder(builder: (context) {
+            final code = user?.defaultCurrency ?? 'PHP';
+            final currency = CurrencyFormatter.getCurrency(code);
+            return ListTile(
+              leading: const Icon(Icons.attach_money),
+              title: const Text('Default Currency'),
+              subtitle: Text(currency != null
+                  ? '${currency.flag} $code - ${currency.name}'
+                  : code),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                _showCurrencyPicker(context, ref, code);
+              },
+            );
+          }),
           // Categories
           ListTile(
             leading: const Icon(Icons.category),
@@ -172,21 +178,50 @@ class SettingsScreen extends ConsumerWidget {
       BuildContext context, WidgetRef ref, String current) {
     showModalBottomSheet(
       context: context,
-      builder: (ctx) => ListView(
-        children: AppConstants.supportedCurrencies.map((currency) {
-          return ListTile(
-            title: Text(currency),
-            trailing: currency == current
-                ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
-                : null,
-            onTap: () {
-              ref.read(authStateProvider.notifier).updateProfile(
-                    defaultCurrency: currency,
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        minChildSize: 0.4,
+        expand: false,
+        builder: (context, scrollController) => Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Default Currency',
+                  style: Theme.of(context).textTheme.titleMedium),
+            ),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                itemCount: CurrencyFormatter.currencies.length,
+                itemBuilder: (context, index) {
+                  final c = CurrencyFormatter.currencies[index];
+                  final isSelected = c.code == current;
+                  return ListTile(
+                    leading:
+                        Text(c.flag, style: const TextStyle(fontSize: 24)),
+                    title: Text(c.code,
+                        style:
+                            const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(c.name),
+                    trailing: isSelected
+                        ? Icon(Icons.check,
+                            color: Theme.of(context).colorScheme.primary)
+                        : Text(c.symbol,
+                            style: Theme.of(context).textTheme.bodyLarge),
+                    onTap: () {
+                      ref.read(authStateProvider.notifier).updateProfile(
+                            defaultCurrency: c.code,
+                          );
+                      Navigator.pop(context);
+                    },
                   );
-              Navigator.pop(ctx);
-            },
-          );
-        }).toList(),
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
