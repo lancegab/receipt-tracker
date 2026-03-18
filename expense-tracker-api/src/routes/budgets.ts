@@ -407,7 +407,12 @@ budgetsRouter.get('/:id/summary', async (c) => {
     }
 
     const manualSpent = parseFloat(item.manualSpent || '0');
-    const itemTotalSpent = autoSpent + manualSpent + installmentAmount;
+    // Sum weekly manual adjustments (negative = spending)
+    const weeklyManualTotal = Object.values(weeklyBreakdown).reduce(
+      (sum, w) => sum + Math.abs(w.manualAdjustment),
+      0
+    );
+    const itemTotalSpent = autoSpent + manualSpent + weeklyManualTotal + installmentAmount;
     const budgetedAmount = parseFloat(item.budgetedAmount);
     const remaining = budgetedAmount - itemTotalSpent;
 
