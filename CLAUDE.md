@@ -1,4 +1,4 @@
-# Receipt Tracker
+# Stash Dash — Your Wealth Dashboard
 
 ## Project Structure
 - **Backend**: `expense-tracker-api/` — Hono + Drizzle ORM + MySQL
@@ -10,7 +10,7 @@
 - **Coolify URL**: https://forge.lagablab.com/project/vsso00sggs8s0o4swggkw040/environment/dsosw0cgc4g8840kso80k00k/application/kggggkgcs04ws88cgogs4g8c
 - **Production API**: https://api.receipt.lagablab.com
 - **Build**: Dockerfile in `expense-tracker-api/`, base directory `/expense-tracker-api`
-- **Auto-deploy**: GitHub webhook on `push` to `main` → Coolify rebuilds automatically
+- **Auto-deploy**: GitHub webhook fires on `push` to `main`, but Coolify does NOT auto-build. Use the **Redeploy** button in the Coolify dashboard or trigger manually. All past deploys show "Manual".
 - **Git source**: Public GitHub (`lancegab/receipt-tracker`, branch `main`)
 - **Linked DB**: MySQL database managed by Coolify (`mysql-database-s4wsks4ckc4sk4swc80kcso8`)
 
@@ -30,6 +30,20 @@ The Dockerfile CMD attempts `drizzle-kit push` on startup but it may fail due to
 - Install on device: `adb install -r build/app/outputs/flutter-apk/app-debug.apk`
 - API base URL is set via `--dart-define=API_BASE_URL=https://api.receipt.lagablab.com/api`
 
+### Deploying Backend
+1. Push code: `git push origin main`
+2. Go to Coolify dashboard → Deployments tab → click **Redeploy**
+3. Wait ~90s for Docker build + rolling update
+4. Verify at https://api.receipt.lagablab.com/api/auth/login (should return 422 for missing body)
+
+### Deploying Flutter App to Device
+```bash
+cd expense_tracker_app
+flutter build apk --debug --dart-define=API_BASE_URL=https://api.receipt.lagablab.com/api
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
+```
+Package name on device: `com.example.expense_tracker_app`
+
 ## Key Commands
 ```bash
 # Backend type check
@@ -38,6 +52,10 @@ cd expense-tracker-api && npx tsc --noEmit
 # Push DB schema (local)
 DATABASE_URL="mysql://app:apppassword@localhost:3307/expense_tracker" npx drizzle-kit push:mysql
 
-# Deploy (just push to main, Coolify auto-deploys)
+# Deploy backend (push + manual Coolify redeploy)
 git push origin main
+# Then click Redeploy in Coolify dashboard
+
+# Build & install Flutter APK
+cd expense_tracker_app && flutter build apk --debug --dart-define=API_BASE_URL=https://api.receipt.lagablab.com/api && adb install -r build/app/outputs/flutter-apk/app-debug.apk
 ```
