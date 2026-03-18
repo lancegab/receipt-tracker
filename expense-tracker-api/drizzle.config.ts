@@ -1,8 +1,8 @@
 export default {
   schema: './src/db/schema.ts',
   out: './src/db/migrations',
-  dialect: 'mysql' as const,
+  driver: 'mysql2' as const,
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    uri: process.env.DATABASE_URL!,
   },
 };

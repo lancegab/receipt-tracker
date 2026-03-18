@@ -223,3 +223,196 @@ export const refreshTokens = mysqlTable(
     tokenIdx: index('idx_token').on(table.tokenHash),
   })
 );
+
+// ── Budget Groups ──────────────────────────────────────────────
+
+export const budgetGroups = mysqlTable(
+  'budget_groups',
+  {
+    id: char('id', { length: 36 }).primaryKey(),
+    name: varchar('name', { length: 100 }).notNull(),
+    description: varchar('description', { length: 255 }),
+    currency: char('currency', { length: 3 }).default('PHP'),
+    createdBy: char('created_by', { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+  },
+  (table) => ({
+    createdByIdx: index('idx_bg_created_by').on(table.createdBy),
+  })
+);
+
+export const budgetGroupMembers = mysqlTable(
+  'budget_group_members',
+  {
+    id: char('id', { length: 36 }).primaryKey(),
+    groupId: char('group_id', { length: 36 })
+      .notNull()
+      .references(() => budgetGroups.id, { onDelete: 'cascade' }),
+    userId: char('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    role: mysqlEnum('role', ['owner', 'member']).notNull().default('member'),
+    joinedAt: timestamp('joined_at').defaultNow(),
+  },
+  (table) => ({
+    groupIdx: index('idx_bgm_group').on(table.groupId),
+    userIdx: index('idx_bgm_user').on(table.userId),
+    uniqueIdx: index('idx_bgm_unique').on(table.groupId, table.userId),
+  })
+);
+
+export const budgetGroupInvitations = mysqlTable(
+  'budget_group_invitations',
+  {
+    id: char('id', { length: 36 }).primaryKey(),
+    groupId: char('group_id', { length: 36 })
+      .notNull()
+      .references(() => budgetGroups.id, { onDelete: 'cascade' }),
+    invitedEmail: varchar('invited_email', { length: 255 }).notNull(),
+    invitedBy: char('invited_by', { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    status: mysqlEnum('status', [
+      'pending',
+      'accepted',
+      'declined',
+      'expired',
+    ])
+      .notNull()
+      .default('pending'),
+    createdAt: timestamp('created_at').defaultNow(),
+    expiresAt: timestamp('expires_at').notNull(),
+  },
+  (table) => ({
+    groupIdx: index('idx_bgi_group').on(table.groupId),
+    emailIdx: index('idx_bgi_email').on(table.invitedEmail),
+  })
+);
+
+// ── Budgets ────────────────────────────────────────────────────
+
+export const budgets = mysqlTable(
+  'budgets',
+  {
+    id: char('id', { length: 36 }).primaryKey(),
+    userId: char('user_id', { length: 36 }).references(() => users.id, {
+      onDelete: 'cascade',
+    }),
+    groupId: char('group_id', { length: 36 }).references(
+      () => budgetGroups.id,
+      { onDelete: 'cascade' }
+    ),
+    name: varchar('name', { length: 100 }).notNull(),
+    month: char('month', { length: 7 }).notNull(),
+    currency: char('currency', { length: 3 }).default('PHP'),
+    notes: text('notes'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+  },
+  (table) => ({
+    userMonthIdx: index('idx_budget_user_month').on(table.userId, table.month),
+    groupMonthIdx: index('idx_budget_group_month').on(
+      table.groupId,
+      table.month
+    ),
+  })
+);
+
+export const budgetItems = mysqlTable(
+  'budget_items',
+  {
+    id: char('id', { length: 36 }).primaryKey(),
+    budgetId: char('budget_id', { length: 36 })
+      .notNull()
+      .references(() => budgets.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 100 }).notNull(),
+    budgetedAmount: decimal('budgeted_amount', { precision: 15, scale: 2 })
+      .notNull()
+      .default('0.00'),
+    linkedAccountId: char('linked_account_id', { length: 36 }).references(
+      () => accounts.id,
+      { onDelete: 'set null' }
+    ),
+    linkedCategoryId: char('linked_category_id', { length: 36 }).references(
+      () => categories.id,
+      { onDelete: 'set null' }
+    ),
+    manualSpent: decimal('manual_spent', { precision: 15, scale: 2 }).default(
+      '0.00'
+    ),
+    sortOrder: tinyint('sort_order').default(0),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+  },
+  (table) => ({
+    budgetIdx: index('idx_bi_budget').on(table.budgetId),
+    accountIdx: index('idx_bi_account').on(table.linkedAccountId),
+    categoryIdx: index('idx_bi_category').on(table.linkedCategoryId),
+  })
+);
+
+export const budgetItemWeeklyAdjustments = mysqlTable(
+  'budget_item_weekly_adjustments',
+  {
+    id: char('id', { length: 36 }).primaryKey(),
+    budgetItemId: char('budget_item_id', { length: 36 })
+      .notNull()
+      .references(() => budgetItems.id, { onDelete: 'cascade' }),
+    week: tinyint('week').notNull(),
+    manualAdjustment: decimal('manual_adjustment', {
+      precision: 15,
+      scale: 2,
+    }).default('0.00'),
+    notes: varchar('notes', { length: 255 }),
+  },
+  (table) => ({
+    itemWeekIdx: index('idx_biwa_item_week').on(
+      table.budgetItemId,
+      table.week
+    ),
+  })
+);
+
+// ── Credit Card Installments ───────────────────────────────────
+
+export const creditCardInstallments = mysqlTable(
+  'credit_card_installments',
+  {
+    id: char('id', { length: 36 }).primaryKey(),
+    userId: char('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    accountId: char('account_id', { length: 36 })
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    description: varchar('description', { length: 255 }).notNull(),
+    totalAmount: decimal('total_amount', { precision: 15, scale: 2 }).notNull(),
+    monthlyAmount: decimal('monthly_amount', {
+      precision: 15,
+      scale: 2,
+    }).notNull(),
+    totalMonths: tinyint('total_months').notNull(),
+    startMonth: char('start_month', { length: 7 }).notNull(),
+    endMonth: char('end_month', { length: 7 }).notNull(),
+    categoryId: char('category_id', { length: 36 }).references(
+      () => categories.id,
+      { onDelete: 'set null' }
+    ),
+    isActive: boolean('is_active').default(true),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+  },
+  (table) => ({
+    userIdx: index('idx_cci_user').on(table.userId),
+    accountIdx: index('idx_cci_account').on(table.accountId),
+    activeMonthIdx: index('idx_cci_active_month').on(
+      table.accountId,
+      table.isActive,
+      table.startMonth,
+      table.endMonth
+    ),
+  })
+);

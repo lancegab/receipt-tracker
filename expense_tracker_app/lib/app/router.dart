@@ -16,6 +16,14 @@ import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/reports/presentation/screens/reports_screen.dart';
 import '../features/recurring/presentation/screens/recurring_screen.dart';
 import '../features/recurring/presentation/screens/add_recurring_screen.dart';
+import '../features/budget/presentation/screens/budget_screen.dart';
+import '../features/budget/presentation/screens/budget_detail_screen.dart';
+import '../features/budget/presentation/screens/create_budget_screen.dart';
+import '../features/budget/presentation/screens/add_budget_item_screen.dart';
+import '../features/budget/presentation/screens/installments_screen.dart';
+import '../features/budget/presentation/screens/add_installment_screen.dart';
+import '../features/budget/presentation/screens/budget_groups_screen.dart';
+import '../features/budget/presentation/screens/budget_group_detail_screen.dart';
 import '../shared/widgets/main_scaffold.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -26,14 +34,14 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/dashboard',
+    initialLocation: '/budget',
     redirect: (context, state) {
       final isLoggedIn = authState.valueOrNull != null;
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
 
       if (!isLoggedIn && !isAuthRoute) return '/login';
-      if (isLoggedIn && isAuthRoute) return '/dashboard';
+      if (isLoggedIn && isAuthRoute) return '/budget';
       return null;
     },
     routes: [
@@ -50,8 +58,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) => MainScaffold(child: child),
         routes: [
           GoRoute(
-            path: '/dashboard',
-            builder: (context, state) => const TransactionsScreen(),
+            path: '/budget',
+            builder: (context, state) => const BudgetScreen(),
           ),
           GoRoute(
             path: '/transactions',
@@ -71,6 +79,49 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+      // Budget routes
+      GoRoute(
+        path: '/budget/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => BudgetDetailScreen(
+          budgetId: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: '/create-budget',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const CreateBudgetScreen(),
+      ),
+      GoRoute(
+        path: '/budget/:id/add-item',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => AddBudgetItemScreen(
+          budgetId: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: '/installments',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const InstallmentsScreen(),
+      ),
+      GoRoute(
+        path: '/add-installment',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AddInstallmentScreen(),
+      ),
+      GoRoute(
+        path: '/groups',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const BudgetGroupsScreen(),
+      ),
+      GoRoute(
+        path: '/groups/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => BudgetGroupDetailScreen(
+          groupId: state.pathParameters['id']!,
+        ),
+      ),
+      // Transaction routes
       GoRoute(
         path: '/add-transaction',
         parentNavigatorKey: _rootNavigatorKey,

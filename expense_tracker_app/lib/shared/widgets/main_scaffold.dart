@@ -8,7 +8,7 @@ class MainScaffold extends StatelessWidget {
 
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/dashboard')) return 0;
+    if (location.startsWith('/budget')) return 0;
     if (location.startsWith('/transactions')) return 1;
     if (location.startsWith('/accounts')) return 2;
     if (location.startsWith('/reports')) return 3;
@@ -25,7 +25,7 @@ class MainScaffold extends StatelessWidget {
         onDestinationSelected: (index) {
           switch (index) {
             case 0:
-              context.go('/dashboard');
+              context.go('/budget');
               break;
             case 1:
               context.go('/transactions');
@@ -43,9 +43,9 @@ class MainScaffold extends StatelessWidget {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
+            icon: Icon(Icons.calculate_outlined),
+            selectedIcon: Icon(Icons.calculate),
+            label: 'Budget',
           ),
           NavigationDestination(
             icon: Icon(Icons.receipt_long_outlined),

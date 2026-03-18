@@ -124,6 +124,96 @@ export const updateRecurringSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+// Budget Group validators
+const monthRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+export const createBudgetGroupSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(255).optional(),
+  currency: z.string().length(3).default('PHP'),
+});
+
+export const updateBudgetGroupSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(255).optional(),
+});
+
+export const inviteMemberSchema = z.object({
+  email: z.string().email(),
+});
+
+// Budget validators
+export const createBudgetSchema = z.object({
+  name: z.string().min(1).max(100),
+  month: z.string().regex(monthRegex),
+  currency: z.string().length(3).default('PHP'),
+  groupId: z.string().length(36).nullable().optional(),
+  notes: z.string().optional(),
+});
+
+export const updateBudgetSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  notes: z.string().nullable().optional(),
+});
+
+export const copyBudgetSchema = z.object({
+  targetMonth: z.string().regex(monthRegex),
+});
+
+// Budget Item validators
+export const createBudgetItemSchema = z.object({
+  name: z.string().min(1).max(100),
+  budgetedAmount: z.number().min(0),
+  linkedAccountId: z.string().length(36).nullable().optional(),
+  linkedCategoryId: z.string().length(36).nullable().optional(),
+  sortOrder: z.number().int().min(0).default(0),
+});
+
+export const updateBudgetItemSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  budgetedAmount: z.number().min(0).optional(),
+  linkedAccountId: z.string().length(36).nullable().optional(),
+  linkedCategoryId: z.string().length(36).nullable().optional(),
+  manualSpent: z.number().optional(),
+  sortOrder: z.number().int().min(0).optional(),
+});
+
+export const generateBudgetItemsSchema = z.object({
+  fromAccounts: z.boolean().default(false),
+  fromCategories: z.boolean().default(false),
+  accountTypes: z
+    .array(z.enum(['cash', 'bank', 'savings', 'wallet', 'credit_card']))
+    .optional(),
+  categoryType: z.enum(['expense', 'income']).default('expense'),
+});
+
+export const weeklyAdjustmentSchema = z.object({
+  manualAdjustment: z.number(),
+  notes: z.string().max(255).optional(),
+});
+
+// Credit Card Installment validators
+export const createInstallmentSchema = z.object({
+  accountId: z.string().length(36),
+  description: z.string().min(1).max(255),
+  totalAmount: z.number().positive(),
+  totalMonths: z.number().int().min(2).max(60),
+  startMonth: z.string().regex(monthRegex),
+  categoryId: z.string().length(36).optional(),
+});
+
+export const updateInstallmentSchema = z.object({
+  description: z.string().min(1).max(255).optional(),
+  categoryId: z.string().length(36).nullable().optional(),
+  isActive: z.boolean().optional(),
+});
+
+export const installmentFiltersSchema = z.object({
+  accountId: z.string().length(36).optional(),
+  active: z.coerce.boolean().optional(),
+  month: z.string().regex(monthRegex).optional(),
+});
+
 // Query param validators
 export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
