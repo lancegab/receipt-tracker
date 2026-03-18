@@ -108,6 +108,141 @@ budgetGroupsRouter.post(
   }
 );
 
+// GET /api/budget-groups/invitations
+// NOTE: Must be defined BEFORE /:id to avoid "invitations" matching as an ID
+budgetGroupsRouter.get('/invitations', async (c) => {
+  const user = c.get('user');
+
+  // Get user email
+  const [userData] = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, user.id));
+
+  if (!userData) {
+    throw new HTTPException(404, { message: 'User not found' });
+  }
+
+  const invitations = await db
+    .select({
+      id: budgetGroupInvitations.id,
+      groupId: budgetGroupInvitations.groupId,
+      invitedEmail: budgetGroupInvitations.invitedEmail,
+      invitedBy: budgetGroupInvitations.invitedBy,
+      status: budgetGroupInvitations.status,
+      createdAt: budgetGroupInvitations.createdAt,
+      expiresAt: budgetGroupInvitations.expiresAt,
+      groupName: budgetGroups.name,
+    })
+    .from(budgetGroupInvitations)
+    .innerJoin(
+      budgetGroups,
+      eq(budgetGroupInvitations.groupId, budgetGroups.id)
+    )
+    .where(
+      and(
+        eq(budgetGroupInvitations.invitedEmail, userData.email),
+        eq(budgetGroupInvitations.status, 'pending')
+      )
+    );
+
+  return c.json({ success: true, data: invitations });
+});
+
+// POST /api/budget-groups/invitations/:id/accept
+budgetGroupsRouter.post('/invitations/:id/accept', async (c) => {
+  const user = c.get('user');
+  const inviteId = c.req.param('id');
+
+  const [userData] = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, user.id));
+
+  const [invitation] = await db
+    .select()
+    .from(budgetGroupInvitations)
+    .where(
+      and(
+        eq(budgetGroupInvitations.id, inviteId),
+        eq(budgetGroupInvitations.invitedEmail, userData!.email),
+        eq(budgetGroupInvitations.status, 'pending')
+      )
+    );
+
+  if (!invitation) {
+    throw new HTTPException(404, {
+      message: 'Invitation not found or already handled',
+    });
+  }
+
+  // Check expiration
+  if (new Date() > new Date(invitation.expiresAt)) {
+    await db
+      .update(budgetGroupInvitations)
+      .set({ status: 'expired' })
+      .where(eq(budgetGroupInvitations.id, inviteId));
+    throw new HTTPException(400, { message: 'Invitation has expired' });
+  }
+
+  // Add to group
+  await db.insert(budgetGroupMembers).values({
+    id: uuidv4(),
+    groupId: invitation.groupId,
+    userId: user.id,
+    role: 'member',
+  });
+
+  // Mark invitation as accepted
+  await db
+    .update(budgetGroupInvitations)
+    .set({ status: 'accepted' })
+    .where(eq(budgetGroupInvitations.id, inviteId));
+
+  return c.json({
+    success: true,
+    data: { message: 'Invitation accepted' },
+  });
+});
+
+// POST /api/budget-groups/invitations/:id/decline
+budgetGroupsRouter.post('/invitations/:id/decline', async (c) => {
+  const user = c.get('user');
+  const inviteId = c.req.param('id');
+
+  const [userData] = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, user.id));
+
+  const [invitation] = await db
+    .select()
+    .from(budgetGroupInvitations)
+    .where(
+      and(
+        eq(budgetGroupInvitations.id, inviteId),
+        eq(budgetGroupInvitations.invitedEmail, userData!.email),
+        eq(budgetGroupInvitations.status, 'pending')
+      )
+    );
+
+  if (!invitation) {
+    throw new HTTPException(404, {
+      message: 'Invitation not found or already handled',
+    });
+  }
+
+  await db
+    .update(budgetGroupInvitations)
+    .set({ status: 'declined' })
+    .where(eq(budgetGroupInvitations.id, inviteId));
+
+  return c.json({
+    success: true,
+    data: { message: 'Invitation declined' },
+  });
+});
+
 // GET /api/budget-groups/:id
 budgetGroupsRouter.get('/:id', async (c) => {
   const user = c.get('user');
@@ -303,140 +438,6 @@ budgetGroupsRouter.post('/:id/members/:memberId/remove', async (c) => {
     .where(eq(budgetGroupMembers.id, memberId));
 
   return c.json({ success: true, data: { message: 'Member removed' } });
-});
-
-// GET /api/budget-groups/invitations
-budgetGroupsRouter.get('/invitations', async (c) => {
-  const user = c.get('user');
-
-  // Get user email
-  const [userData] = await db
-    .select({ email: users.email })
-    .from(users)
-    .where(eq(users.id, user.id));
-
-  if (!userData) {
-    throw new HTTPException(404, { message: 'User not found' });
-  }
-
-  const invitations = await db
-    .select({
-      id: budgetGroupInvitations.id,
-      groupId: budgetGroupInvitations.groupId,
-      invitedEmail: budgetGroupInvitations.invitedEmail,
-      invitedBy: budgetGroupInvitations.invitedBy,
-      status: budgetGroupInvitations.status,
-      createdAt: budgetGroupInvitations.createdAt,
-      expiresAt: budgetGroupInvitations.expiresAt,
-      groupName: budgetGroups.name,
-    })
-    .from(budgetGroupInvitations)
-    .innerJoin(
-      budgetGroups,
-      eq(budgetGroupInvitations.groupId, budgetGroups.id)
-    )
-    .where(
-      and(
-        eq(budgetGroupInvitations.invitedEmail, userData.email),
-        eq(budgetGroupInvitations.status, 'pending')
-      )
-    );
-
-  return c.json({ success: true, data: invitations });
-});
-
-// POST /api/budget-groups/invitations/:id/accept
-budgetGroupsRouter.post('/invitations/:id/accept', async (c) => {
-  const user = c.get('user');
-  const inviteId = c.req.param('id');
-
-  const [userData] = await db
-    .select({ email: users.email })
-    .from(users)
-    .where(eq(users.id, user.id));
-
-  const [invitation] = await db
-    .select()
-    .from(budgetGroupInvitations)
-    .where(
-      and(
-        eq(budgetGroupInvitations.id, inviteId),
-        eq(budgetGroupInvitations.invitedEmail, userData!.email),
-        eq(budgetGroupInvitations.status, 'pending')
-      )
-    );
-
-  if (!invitation) {
-    throw new HTTPException(404, {
-      message: 'Invitation not found or already handled',
-    });
-  }
-
-  // Check expiration
-  if (new Date() > new Date(invitation.expiresAt)) {
-    await db
-      .update(budgetGroupInvitations)
-      .set({ status: 'expired' })
-      .where(eq(budgetGroupInvitations.id, inviteId));
-    throw new HTTPException(400, { message: 'Invitation has expired' });
-  }
-
-  // Add to group
-  await db.insert(budgetGroupMembers).values({
-    id: uuidv4(),
-    groupId: invitation.groupId,
-    userId: user.id,
-    role: 'member',
-  });
-
-  // Mark invitation as accepted
-  await db
-    .update(budgetGroupInvitations)
-    .set({ status: 'accepted' })
-    .where(eq(budgetGroupInvitations.id, inviteId));
-
-  return c.json({
-    success: true,
-    data: { message: 'Invitation accepted' },
-  });
-});
-
-// POST /api/budget-groups/invitations/:id/decline
-budgetGroupsRouter.post('/invitations/:id/decline', async (c) => {
-  const user = c.get('user');
-  const inviteId = c.req.param('id');
-
-  const [userData] = await db
-    .select({ email: users.email })
-    .from(users)
-    .where(eq(users.id, user.id));
-
-  const [invitation] = await db
-    .select()
-    .from(budgetGroupInvitations)
-    .where(
-      and(
-        eq(budgetGroupInvitations.id, inviteId),
-        eq(budgetGroupInvitations.invitedEmail, userData!.email),
-        eq(budgetGroupInvitations.status, 'pending')
-      )
-    );
-
-  if (!invitation) {
-    throw new HTTPException(404, {
-      message: 'Invitation not found or already handled',
-    });
-  }
-
-  await db
-    .update(budgetGroupInvitations)
-    .set({ status: 'declined' })
-    .where(eq(budgetGroupInvitations.id, inviteId));
-
-  return c.json({
-    success: true,
-    data: { message: 'Invitation declined' },
-  });
 });
 
 export default budgetGroupsRouter;
