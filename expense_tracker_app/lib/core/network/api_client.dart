@@ -11,6 +11,7 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 class ApiClient {
   late final Dio _dio;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  Future<bool>? _refreshFuture;
 
   ApiClient() {
     _dio = Dio(BaseOptions(
@@ -35,8 +36,12 @@ class ApiClient {
             final opts = error.requestOptions;
             final token = await _storage.read(key: 'access_token');
             opts.headers['Authorization'] = 'Bearer $token';
-            final response = await _dio.fetch(opts);
-            return handler.resolve(response);
+            try {
+              final response = await _dio.fetch(opts);
+              return handler.resolve(response);
+            } catch (e) {
+              return handler.next(error);
+            }
           }
         }
         handler.next(error);
@@ -44,7 +49,14 @@ class ApiClient {
     ));
   }
 
-  Future<bool> _tryRefreshToken() async {
+  // Deduplicate: concurrent 401s share a single refresh call
+  Future<bool> _tryRefreshToken() {
+    _refreshFuture ??=
+        _doRefresh().whenComplete(() => _refreshFuture = null);
+    return _refreshFuture!;
+  }
+
+  Future<bool> _doRefresh() async {
     try {
       final userId = await _storage.read(key: 'user_id');
       final refreshToken = await _storage.read(key: 'refresh_token');
