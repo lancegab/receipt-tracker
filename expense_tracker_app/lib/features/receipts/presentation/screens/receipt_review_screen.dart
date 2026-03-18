@@ -20,10 +20,13 @@ class ReceiptReviewScreen extends ConsumerStatefulWidget {
       _ReceiptReviewScreenState();
 }
 
+enum SaveMode { lineItems, singleTotal }
+
 class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
   late ReceiptModel _receipt;
   String? _selectedAccountId;
   bool _isSaving = false;
+  SaveMode _saveMode = SaveMode.lineItems;
 
   @override
   void initState() {
@@ -53,31 +56,59 @@ class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
     setState(() => _isSaving = true);
 
     try {
-      final transactions = selectedItems.map((item) {
-        return {
+      final date = _receipt.transactionDate ??
+          DateFormatter.formatApiDate(DateTime.now());
+
+      if (_saveMode == SaveMode.singleTotal) {
+        // Single transaction with total
+        final total =
+            selectedItems.fold(0.0, (sum, i) => sum + i.totalPrice);
+        final description = _receipt.merchantName ?? 'Receipt purchase';
+        await ref.read(transactionsProvider.notifier).createTransaction({
           'accountId': _selectedAccountId,
           'type': 'expense',
-          'amount': item.totalPrice,
-          'date': _receipt.transactionDate ??
-              DateFormatter.formatApiDate(DateTime.now()),
-          'description': item.description,
+          'amount': total,
+          'date': date,
+          'description': description,
           'merchantName': _receipt.merchantName,
           'receiptId': _receipt.id,
-          if (item.selectedCategoryId != null)
-            'categoryId': item.selectedCategoryId,
-        };
-      }).toList();
+          if (selectedItems.first.selectedCategoryId != null)
+            'categoryId': selectedItems.first.selectedCategoryId,
+        });
 
-      await ref
-          .read(transactionsProvider.notifier)
-          .createBatchTransactions(transactions);
+        if (mounted) {
+          context.showSnackBar('1 transaction saved');
+        }
+      } else {
+        // Individual line item transactions
+        final transactions = selectedItems.map((item) {
+          return {
+            'accountId': _selectedAccountId,
+            'type': 'expense',
+            'amount': item.totalPrice,
+            'date': date,
+            'description': item.description,
+            'merchantName': _receipt.merchantName,
+            'receiptId': _receipt.id,
+            if (item.selectedCategoryId != null)
+              'categoryId': item.selectedCategoryId,
+          };
+        }).toList();
+
+        await ref
+            .read(transactionsProvider.notifier)
+            .createBatchTransactions(transactions);
+
+        if (mounted) {
+          context.showSnackBar(
+              '${selectedItems.length} transactions saved');
+        }
+      }
 
       ref.read(accountsProvider.notifier).loadAccounts();
 
       if (mounted) {
-        context.showSnackBar(
-            '${selectedItems.length} transactions saved');
-        context.go('/dashboard');
+        context.go('/budget');
       }
     } catch (e) {
       if (mounted) context.showSnackBar(e.toString(), isError: true);
@@ -271,6 +302,24 @@ class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
+                  SegmentedButton<SaveMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: SaveMode.lineItems,
+                        label: Text('Individual Items'),
+                        icon: Icon(Icons.list, size: 18),
+                      ),
+                      ButtonSegment(
+                        value: SaveMode.singleTotal,
+                        label: Text('Single Total'),
+                        icon: Icon(Icons.receipt, size: 18),
+                      ),
+                    ],
+                    selected: {_saveMode},
+                    onSelectionChanged: (v) =>
+                        setState(() => _saveMode = v.first),
+                  ),
+                  const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: _isSaving ? null : _saveAll,
                     child: _isSaving
@@ -280,7 +329,11 @@ class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
                             child:
                                 CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Text('Save $selectedCount Transactions'),
+                        : Text(
+                            _saveMode == SaveMode.singleTotal
+                                ? 'Save as 1 Transaction'
+                                : 'Save $selectedCount Transactions',
+                          ),
                   ),
                 ],
               ),
