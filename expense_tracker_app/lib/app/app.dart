@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'router.dart';
 import '../features/auth/presentation/providers/biometric_provider.dart';
 
-class ExpenseTrackerApp extends ConsumerStatefulWidget {
-  const ExpenseTrackerApp({super.key});
+class StashDashApp extends ConsumerStatefulWidget {
+  const StashDashApp({super.key});
 
   @override
-  ConsumerState<ExpenseTrackerApp> createState() => _ExpenseTrackerAppState();
+  ConsumerState<StashDashApp> createState() => _StashDashAppState();
 }
 
-class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp>
+class _StashDashAppState extends ConsumerState<StashDashApp>
     with WidgetsBindingObserver {
   @override
   void initState() {
@@ -42,12 +43,15 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp>
     final biometric = ref.watch(biometricProvider);
 
     return MaterialApp.router(
-      title: 'Expense Tracker',
+      title: 'Stash Dash',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6750A4),
+          seedColor: const Color(0xFF2E7D32),
           brightness: Brightness.light,
+        ),
+        textTheme: GoogleFonts.comfortaaTextTheme(
+          ThemeData(brightness: Brightness.light).textTheme,
         ),
         useMaterial3: true,
         inputDecorationTheme: InputDecorationTheme(
@@ -66,15 +70,48 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp>
           style: ElevatedButton.styleFrom(
             minimumSize: const Size.fromHeight(48),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
+        ),
+        segmentedButtonTheme: SegmentedButtonThemeData(
+          style: ButtonStyle(
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
             ),
           ),
         ),
       ),
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6750A4),
+          seedColor: const Color(0xFF2E7D32),
           brightness: Brightness.dark,
+        ),
+        textTheme: GoogleFonts.comfortaaTextTheme(
+          ThemeData(brightness: Brightness.dark).textTheme,
         ),
         useMaterial3: true,
         inputDecorationTheme: InputDecorationTheme(
@@ -93,7 +130,37 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp>
           style: ElevatedButton.styleFrom(
             minimumSize: const Size.fromHeight(48),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
+        ),
+        segmentedButtonTheme: SegmentedButtonThemeData(
+          style: ButtonStyle(
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
             ),
           ),
         ),
