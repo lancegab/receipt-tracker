@@ -104,16 +104,46 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(
-                    Icons.receipt_long,
-                    size: 80,
-                    color: context.colorScheme.primary,
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: context.colorScheme.primary.withValues(alpha: 0.15),
+                          blurRadius: 24,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.account_balance_wallet_rounded,
+                          size: 56,
+                          color: context.colorScheme.primary,
+                        ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   Text(
-                    'Expense Tracker',
+                    'Stash Dash',
                     style: context.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Your Wealth Dashboard',
+                    style: context.textTheme.titleSmall?.copyWith(
+                      color: context.colorScheme.primary,
+                      letterSpacing: 1.2,
                     ),
                     textAlign: TextAlign.center,
                   ),
