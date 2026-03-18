@@ -8,6 +8,7 @@ import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
+import '../../../../shared/models/transaction_model.dart';
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
   const AddTransactionScreen({super.key});
@@ -30,6 +31,25 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   String? _transferToAccountId;
   DateTime _date = DateTime.now();
   bool _isLoading = false;
+  TransactionModel? _editingTxn;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final extra = GoRouterState.of(context).extra;
+    if (extra is TransactionModel && _editingTxn == null) {
+      _editingTxn = extra;
+      _amountController.text = extra.amount.toStringAsFixed(2);
+      _descriptionController.text = extra.description;
+      _notesController.text = extra.notes ?? '';
+      _merchantController.text = extra.merchantName ?? '';
+      _type = extra.type;
+      _accountId = extra.accountId;
+      _categoryId = extra.categoryId;
+      _transferToAccountId = extra.transferToAccountId;
+      _date = DateTime.tryParse(extra.date) ?? DateTime.now();
+    }
+  }
 
   @override
   void dispose() {
@@ -74,7 +94,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           'transferToAccountId': _transferToAccountId,
       };
 
-      await ref.read(transactionsProvider.notifier).createTransaction(data);
+      if (_editingTxn != null) {
+        await ref
+            .read(transactionsProvider.notifier)
+            .updateTransaction(_editingTxn!.id, data);
+      } else {
+        await ref.read(transactionsProvider.notifier).createTransaction(data);
+      }
       if (mounted) {
         ref.read(accountsProvider.notifier).loadAccounts();
         context.pop();
@@ -105,7 +131,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final currencySymbol = CurrencyFormatter.getSymbol(selectedCurrency);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Transaction')),
+      appBar: AppBar(
+          title: Text(
+              _editingTxn != null ? 'Edit Transaction' : 'Add Transaction')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(

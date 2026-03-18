@@ -183,9 +183,8 @@ class TransactionsScreen extends ConsumerWidget {
                                 : null,
                           ),
                         ),
-                        onTap: () {
-                          // TODO: Navigate to transaction detail
-                        },
+                        onTap: () => context.push(
+                            '/add-transaction', extra: txn),
                       );
                     },
                   ),

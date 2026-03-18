@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/recurring_provider.dart';
 import '../../../../features/accounts/presentation/providers/accounts_provider.dart';
+import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../core/extensions/context_extensions.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../../../../shared/models/recurring_transaction_model.dart';
 
 class AddRecurringScreen extends ConsumerStatefulWidget {
   const AddRecurringScreen({super.key});
@@ -21,6 +24,23 @@ class _AddRecurringScreenState extends ConsumerState<AddRecurringScreen> {
   String _frequency = 'monthly';
   String? _accountId;
   DateTime _startDate = DateTime.now();
+  RecurringTransactionModel? _editingItem;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final extra = GoRouterState.of(context).extra;
+    if (extra is RecurringTransactionModel && _editingItem == null) {
+      _editingItem = extra;
+      _descriptionController.text = extra.description;
+      _amountController.text = extra.amount.toStringAsFixed(2);
+      _type = extra.type;
+      _frequency = extra.frequency;
+      _accountId = extra.accountId;
+      _startDate =
+          DateTime.tryParse(extra.startDate) ?? DateTime.now();
+    }
+  }
 
   @override
   void dispose() {
@@ -37,7 +57,7 @@ class _AddRecurringScreenState extends ConsumerState<AddRecurringScreen> {
     }
 
     try {
-      await ref.read(recurringProvider.notifier).createRecurring({
+      final data = {
         'accountId': _accountId,
         'type': _type,
         'amount': double.parse(_amountController.text),
@@ -45,7 +65,14 @@ class _AddRecurringScreenState extends ConsumerState<AddRecurringScreen> {
         'frequency': _frequency,
         'startDate':
             '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
-      });
+      };
+      if (_editingItem != null) {
+        await ref
+            .read(recurringProvider.notifier)
+            .updateRecurring(_editingItem!.id, data);
+      } else {
+        await ref.read(recurringProvider.notifier).createRecurring(data);
+      }
       if (mounted) context.pop();
     } catch (e) {
       if (mounted) context.showSnackBar(e.toString(), isError: true);
@@ -55,9 +82,16 @@ class _AddRecurringScreenState extends ConsumerState<AddRecurringScreen> {
   @override
   Widget build(BuildContext context) {
     final accountsState = ref.watch(accountsProvider);
+    final isEditing = _editingItem != null;
+    final userCurrency =
+        ref.watch(authStateProvider).valueOrNull?.defaultCurrency ?? 'PHP';
+    final currencySymbol = CurrencyFormatter.getSymbol(userCurrency);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Recurring Transaction')),
+      appBar: AppBar(
+          title: Text(isEditing
+              ? 'Edit Recurring Transaction'
+              : 'Add Recurring Transaction')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -113,9 +147,10 @@ class _AddRecurringScreenState extends ConsumerState<AddRecurringScreen> {
             // Amount
             TextFormField(
               controller: _amountController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Amount',
-                prefixIcon: Icon(Icons.attach_money),
+                prefixText: '$currencySymbol ',
+                prefixIcon: const Icon(Icons.attach_money),
               ),
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
@@ -170,7 +205,8 @@ class _AddRecurringScreenState extends ConsumerState<AddRecurringScreen> {
 
             ElevatedButton(
               onPressed: _submit,
-              child: const Text('Create Recurring Transaction'),
+              child: Text(
+                  isEditing ? 'Save Changes' : 'Create Recurring Transaction'),
             ),
           ],
         ),

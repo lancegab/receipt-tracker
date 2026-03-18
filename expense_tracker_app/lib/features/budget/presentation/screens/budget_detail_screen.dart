@@ -239,7 +239,7 @@ class _BudgetSummaryCards extends StatelessWidget {
         _SummaryCard(
           label: 'Left',
           amount: totalRemaining,
-          color: totalRemaining >= 0 ? Colors.green : context.colorScheme.error,
+          color: totalRemaining >= 0 ? const Color(0xFF2E7D32) : context.colorScheme.error,
         ),
       ],
     );
@@ -301,8 +301,8 @@ class _MonthlyItemCard extends ConsumerWidget {
     final progressColor = pct > 1.0
         ? context.colorScheme.error
         : pct > 0.8
-            ? Colors.orange
-            : Colors.green;
+            ? const Color(0xFFFFC107)
+            : const Color(0xFF2E7D32);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -370,7 +370,7 @@ class _MonthlyItemCard extends ConsumerWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: item.remaining >= 0
-                        ? Colors.green
+                        ? const Color(0xFF2E7D32)
                         : context.colorScheme.error,
                   ),
                 ),
@@ -385,6 +385,24 @@ class _MonthlyItemCard extends ConsumerWidget {
   void _handleItemAction(
       BuildContext context, WidgetRef ref, String action) async {
     if (action == 'delete') {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Delete Item'),
+          content: Text('Remove "${item.name}" from this budget?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
       try {
         await ref
             .read(budgetItemServiceProvider)
@@ -479,7 +497,7 @@ class _WeeklyItemCard extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: item.remaining >= 0
-                        ? Colors.green
+                        ? const Color(0xFF2E7D32)
                         : context.colorScheme.error,
                   ),
                 ),

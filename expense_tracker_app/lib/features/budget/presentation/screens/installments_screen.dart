@@ -143,11 +143,31 @@ class _InstallmentCard extends ConsumerWidget {
                   ),
                 PopupMenuButton<String>(
                   iconSize: 20,
-                  onSelected: (action) {
+                  onSelected: (action) async {
                     if (action == 'deactivate') {
-                      ref
-                          .read(installmentsProvider.notifier)
-                          .deactivateInstallment(installment.id);
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Deactivate Installment'),
+                          content: Text(
+                              'Stop tracking "${installment.description}"? This won\'t delete past payments.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Deactivate'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        ref
+                            .read(installmentsProvider.notifier)
+                            .deactivateInstallment(installment.id);
+                      }
                     }
                   },
                   itemBuilder: (context) => [

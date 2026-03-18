@@ -5,6 +5,7 @@ import '../providers/accounts_provider.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../shared/models/account_model.dart';
 
 class AddAccountScreen extends ConsumerStatefulWidget {
   const AddAccountScreen({super.key});
@@ -23,6 +24,29 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
   String _type = 'bank';
   String? _currency;
   bool _isLoading = false;
+  AccountModel? _editingAccount;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final extra = GoRouterState.of(context).extra;
+    if (extra is AccountModel && _editingAccount == null) {
+      _editingAccount = extra;
+      _nameController.text = extra.name;
+      _balanceController.text = extra.balance.toStringAsFixed(2);
+      _type = extra.type;
+      _currency = extra.currency;
+      if (extra.creditLimit != null) {
+        _creditLimitController.text = extra.creditLimit!.toStringAsFixed(2);
+      }
+      if (extra.statementCloseDay != null) {
+        _closeController.text = extra.statementCloseDay.toString();
+      }
+      if (extra.paymentDueDay != null) {
+        _dueController.text = extra.paymentDueDay.toString();
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -68,7 +92,13 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
         }
       }
 
-      await ref.read(accountsProvider.notifier).createAccount(data);
+      if (_editingAccount != null) {
+        await ref
+            .read(accountsProvider.notifier)
+            .updateAccount(_editingAccount!.id, data);
+      } else {
+        await ref.read(accountsProvider.notifier).createAccount(data);
+      }
       if (mounted) context.pop();
     } catch (e) {
       if (mounted) context.showSnackBar(e.toString(), isError: true);
@@ -129,8 +159,11 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
   Widget build(BuildContext context) {
     final currencyData = CurrencyFormatter.getCurrency(_effectiveCurrency);
 
+    final isEditing = _editingAccount != null;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Account')),
+      appBar: AppBar(
+          title: Text(isEditing ? 'Edit Account' : 'Add Account')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -243,7 +276,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                         width: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Create Account'),
+                    : Text(isEditing ? 'Save Changes' : 'Create Account'),
               ),
             ],
           ),

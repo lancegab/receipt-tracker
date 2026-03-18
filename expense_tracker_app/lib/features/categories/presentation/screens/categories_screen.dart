@@ -79,10 +79,30 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
           if (!category.isSystem)
             TextButton(
               onPressed: () async {
-                await ref
-                    .read(categoriesProvider.notifier)
-                    .deleteCategory(category.id);
-                if (ctx.mounted) Navigator.pop(ctx);
+                Navigator.pop(ctx);
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (c) => AlertDialog(
+                    title: const Text('Delete Category'),
+                    content: Text(
+                        'Delete "${category.name}"? Transactions using it will become uncategorized.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(c, false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(c, true),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  ref
+                      .read(categoriesProvider.notifier)
+                      .deleteCategory(category.id);
+                }
               },
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('Delete'),

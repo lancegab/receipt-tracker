@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/accounts_provider.dart';
 import '../../../../features/transactions/presentation/providers/transactions_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -59,16 +60,43 @@ class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
               PopupMenuButton(
                 itemBuilder: (context) => [
                   const PopupMenuItem(
+                    value: 'edit',
+                    child: Text('Edit Account'),
+                  ),
+                  const PopupMenuItem(
                     value: 'archive',
                     child: Text('Archive Account'),
                   ),
                 ],
                 onSelected: (value) async {
-                  if (value == 'archive') {
-                    await ref
-                        .read(accountsProvider.notifier)
-                        .archiveAccount(account.id);
-                    if (context.mounted) Navigator.of(context).pop();
+                  if (value == 'edit') {
+                    await context.push('/add-account', extra: account);
+                    ref.read(accountsProvider.notifier).loadAccounts();
+                  } else if (value == 'archive') {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Archive Account'),
+                        content: Text(
+                            'Archive "${account.name}"? It will be hidden but not deleted.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Archive'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      await ref
+                          .read(accountsProvider.notifier)
+                          .archiveAccount(account.id);
+                      if (context.mounted) Navigator.of(context).pop();
+                    }
                   }
                 },
               ),
@@ -122,8 +150,8 @@ class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
                         return ListTile(
                           leading: CircleAvatar(
                             backgroundColor: txn.type == 'income'
-                                ? Colors.green.withOpacity(0.1)
-                                : Colors.red.withOpacity(0.1),
+                                ? const Color(0xFF2E7D32).withOpacity(0.1)
+                                : const Color(0xFFE53935).withOpacity(0.1),
                             child: Icon(
                               txn.type == 'income'
                                   ? Icons.arrow_downward
@@ -131,8 +159,8 @@ class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
                                       ? Icons.swap_horiz
                                       : Icons.arrow_upward,
                               color: txn.type == 'income'
-                                  ? Colors.green
-                                  : Colors.red,
+                                  ? const Color(0xFF2E7D32)
+                                  : const Color(0xFFE53935),
                               size: 20,
                             ),
                           ),
@@ -144,7 +172,7 @@ class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: txn.type == 'income'
-                                  ? Colors.green
+                                  ? const Color(0xFF2E7D32)
                                   : null,
                             ),
                           ),

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/recurring_provider.dart';
+import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../core/extensions/context_extensions.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/models/recurring_transaction_model.dart';
 
 class RecurringScreen extends ConsumerWidget {
@@ -83,7 +85,9 @@ class _RecurringCard extends ConsumerWidget {
     final isExpense = item.type == 'expense';
     final color = isExpense
         ? context.colorScheme.error
-        : Colors.green;
+        : const Color(0xFF2E7D32);
+    final userCurrency =
+        ref.watch(authStateProvider).valueOrNull?.defaultCurrency ?? 'PHP';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -100,13 +104,14 @@ class _RecurringCard extends ConsumerWidget {
           '${item.frequencyLabel} \u2022 Next: ${item.nextOccurrence}',
         ),
         trailing: Text(
-          '${isExpense ? '-' : '+'}\$${item.amount.toStringAsFixed(2)}',
+          '${isExpense ? '-' : '+'}${CurrencyFormatter.format(item.amount, currency: userCurrency)}',
           style: TextStyle(
             color: color,
             fontWeight: FontWeight.bold,
             fontSize: 16,
           ),
         ),
+        onTap: () => context.push('/add-recurring', extra: item),
         onLongPress: () async {
           final confirmed = await showDialog<bool>(
             context: context,

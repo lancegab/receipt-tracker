@@ -70,6 +70,12 @@ class _BudgetGroupDetailScreenState
                   _handleAction(action),
               itemBuilder: (context) => [
                 const PopupMenuItem(
+                    value: 'rename',
+                    child: Text('Rename Group')),
+                const PopupMenuItem(
+                    value: 'description',
+                    child: Text('Edit Description')),
+                const PopupMenuItem(
                     value: 'invite',
                     child: Text('Invite Member')),
                 const PopupMenuItem(
@@ -136,6 +142,25 @@ class _BudgetGroupDetailScreenState
 
   void _handleAction(String action) async {
     switch (action) {
+      case 'rename':
+        _showEditFieldDialog('Rename Group', 'Group Name', _group?.name ?? '',
+            (value) async {
+          await ref
+              .read(budgetGroupsProvider.notifier)
+              .updateGroup(widget.groupId, {'name': value});
+          _loadGroup();
+        });
+        break;
+      case 'description':
+        _showEditFieldDialog(
+            'Edit Description', 'Description', _group?.description ?? '',
+            (value) async {
+          await ref
+              .read(budgetGroupsProvider.notifier)
+              .updateGroup(widget.groupId, {'description': value});
+          _loadGroup();
+        });
+        break;
       case 'invite':
         _showInviteDialog();
         break;
@@ -170,6 +195,40 @@ class _BudgetGroupDetailScreenState
         }
         break;
     }
+  }
+
+  void _showEditFieldDialog(String title, String label, String currentValue,
+      Future<void> Function(String) onSave) {
+    final controller = TextEditingController(text: currentValue);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(labelText: label),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (controller.text.trim().isEmpty) return;
+              Navigator.pop(ctx);
+              try {
+                await onSave(controller.text.trim());
+              } catch (e) {
+                if (mounted) context.showSnackBar('Error: $e');
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showInviteDialog() {
