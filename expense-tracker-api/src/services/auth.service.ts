@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from 'jose';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/index.js';
-import { users, refreshTokens } from '../db/schema.js';
+import { users, refreshTokens, categories } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import type { JWTPayload } from '../types/index.js';
 
@@ -107,6 +107,65 @@ export async function findUserById(id: string) {
   return user || null;
 }
 
+const defaultExpenseCategories = [
+  { name: 'Food & Dining', icon: 'restaurant', color: '#FF6B6B' },
+  { name: 'Groceries', icon: 'shopping_cart', color: '#4ECDC4' },
+  { name: 'Transportation', icon: 'directions_car', color: '#45B7D1' },
+  { name: 'Shopping', icon: 'shopping_bag', color: '#96CEB4' },
+  { name: 'Entertainment', icon: 'movie', color: '#FFEAA7' },
+  { name: 'Bills & Utilities', icon: 'receipt_long', color: '#DDA0DD' },
+  { name: 'Healthcare', icon: 'local_hospital', color: '#98D8C8' },
+  { name: 'Personal Care', icon: 'spa', color: '#F7DC6F' },
+  { name: 'Education', icon: 'school', color: '#82E0AA' },
+  { name: 'Travel', icon: 'flight', color: '#85C1E9' },
+  { name: 'Home', icon: 'home', color: '#F0B27A' },
+  { name: 'Gifts & Donations', icon: 'card_giftcard', color: '#D7BDE2' },
+  { name: 'Other', icon: 'more_horiz', color: '#BDC3C7' },
+];
+
+const defaultIncomeCategories = [
+  { name: 'Salary', icon: 'work', color: '#27AE60' },
+  { name: 'Freelance', icon: 'laptop', color: '#2ECC71' },
+  { name: 'Investment', icon: 'trending_up', color: '#1ABC9C' },
+  { name: 'Gift', icon: 'redeem', color: '#3498DB' },
+  { name: 'Refund', icon: 'replay', color: '#9B59B6' },
+  { name: 'Other Income', icon: 'attach_money', color: '#F39C12' },
+];
+
+export async function seedCategoriesForUser(userId: string) {
+  const existing = await db
+    .select()
+    .from(categories)
+    .where(eq(categories.userId, userId))
+    .limit(1);
+  if (existing.length > 0) return; // already has categories
+
+  const values = [
+    ...defaultExpenseCategories.map((c) => ({
+      id: uuidv4(),
+      userId,
+      name: c.name,
+      type: 'expense' as const,
+      icon: c.icon,
+      color: c.color,
+      isSystem: false,
+      isActive: true,
+    })),
+    ...defaultIncomeCategories.map((c) => ({
+      id: uuidv4(),
+      userId,
+      name: c.name,
+      type: 'income' as const,
+      icon: c.icon,
+      color: c.color,
+      isSystem: false,
+      isActive: true,
+    })),
+  ];
+
+  await db.insert(categories).values(values);
+}
+
 export async function createUser(data: {
   email: string;
   passwordHash?: string;
@@ -123,6 +182,9 @@ export async function createUser(data: {
     authProvider: data.authProvider,
     authProviderId: data.authProviderId || null,
   });
+
+  // Seed default categories for the new user
+  await seedCategoriesForUser(id);
 
   return findUserById(id);
 }

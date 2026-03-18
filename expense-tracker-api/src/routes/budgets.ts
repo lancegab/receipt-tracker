@@ -642,9 +642,9 @@ budgetsRouter.post(
           )
         );
 
-      // Filter to user's own + system categories
+      // Filter to user's own categories
       const filtered = userCategories.filter(
-        (cat) => cat.isSystem || cat.userId === user.id
+        (cat) => cat.userId === user.id
       );
 
       for (const cat of filtered) {

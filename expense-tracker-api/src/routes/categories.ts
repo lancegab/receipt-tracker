@@ -3,9 +3,10 @@ import { zValidator } from '@hono/zod-validator';
 import { HTTPException } from 'hono/http-exception';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/index.js';
-import { categories } from '../db/schema.js';
-import { eq, and, or, isNull } from 'drizzle-orm';
+import { categories, users } from '../db/schema.js';
+import { eq, and, isNull, inArray } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth.js';
+import { seedCategoriesForUser } from '../services/auth.service.js';
 import {
   createCategorySchema,
   updateCategorySchema,
@@ -15,15 +16,15 @@ import type { AppEnv } from '../types/index.js';
 const categoriesRouter = new Hono<AppEnv>();
 categoriesRouter.use('*', authMiddleware);
 
-// GET /api/categories
+// GET /api/categories — returns only this user's categories
 categoriesRouter.get('/', async (c) => {
   const user = c.get('user');
   const type = c.req.query('type') as 'expense' | 'income' | undefined;
 
-  const conditions = [
-    or(eq(categories.userId, user.id), isNull(categories.userId)),
-  ];
+  // Ensure user has categories (lazy migration from global system cats)
+  await seedCategoriesForUser(user.id);
 
+  const conditions = [eq(categories.userId, user.id)];
   if (type) {
     conditions.push(eq(categories.type, type));
   }
@@ -32,7 +33,7 @@ categoriesRouter.get('/', async (c) => {
     .select()
     .from(categories)
     .where(and(...conditions))
-    .orderBy(categories.isSystem, categories.name);
+    .orderBy(categories.name);
 
   return c.json({ success: true, data: result });
 });
@@ -86,12 +87,6 @@ categoriesRouter.patch(
       throw new HTTPException(404, { message: 'Category not found' });
     }
 
-    if (existing.isSystem) {
-      throw new HTTPException(403, {
-        message: 'Cannot modify system categories',
-      });
-    }
-
     const updateData: Record<string, unknown> = {};
     if (body.name !== undefined) updateData.name = body.name;
     if (body.icon !== undefined) updateData.icon = body.icon;
@@ -109,6 +104,43 @@ categoriesRouter.patch(
   }
 );
 
+// POST /api/categories/dedup — migrate global system categories to per-user and clean up
+categoriesRouter.post('/dedup', async (c) => {
+  // 1. Delete all global system categories (userId IS NULL)
+  const globalCats = await db
+    .select()
+    .from(categories)
+    .where(isNull(categories.userId));
+
+  if (globalCats.length > 0) {
+    await db.delete(categories).where(isNull(categories.userId));
+  }
+
+  // 2. Seed categories for all existing users who don't have their own
+  const allUsers = await db.select({ id: users.id }).from(users);
+  let seeded = 0;
+  for (const u of allUsers) {
+    const existing = await db
+      .select()
+      .from(categories)
+      .where(eq(categories.userId, u.id))
+      .limit(1);
+    if (existing.length === 0) {
+      await seedCategoriesForUser(u.id);
+      seeded++;
+    }
+  }
+
+  return c.json({
+    success: true,
+    data: {
+      globalDeleted: globalCats.length,
+      usersSeeded: seeded,
+      totalUsers: allUsers.length,
+    },
+  });
+});
+
 // DELETE /api/categories/:id
 categoriesRouter.delete('/:id', async (c) => {
   const user = c.get('user');
@@ -123,12 +155,6 @@ categoriesRouter.delete('/:id', async (c) => {
 
   if (!existing) {
     throw new HTTPException(404, { message: 'Category not found' });
-  }
-
-  if (existing.isSystem) {
-    throw new HTTPException(403, {
-      message: 'Cannot delete system categories',
-    });
   }
 
   await db.delete(categories).where(eq(categories.id, id));
