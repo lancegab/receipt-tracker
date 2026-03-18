@@ -24,6 +24,7 @@ import '../features/budget/presentation/screens/installments_screen.dart';
 import '../features/budget/presentation/screens/add_installment_screen.dart';
 import '../features/budget/presentation/screens/budget_groups_screen.dart';
 import '../features/budget/presentation/screens/budget_group_detail_screen.dart';
+import '../features/auth/presentation/screens/splash_screen.dart';
 import '../shared/widgets/main_scaffold.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -36,15 +37,26 @@ final routerProvider = Provider<GoRouter>((ref) {
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/budget',
     redirect: (context, state) {
+      final isLoading = authState.isLoading;
       final isLoggedIn = authState.valueOrNull != null;
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
+      final isSplash = state.matchedLocation == '/splash';
+
+      // While checking auth, show splash (unless already there)
+      if (isLoading) return isSplash ? null : '/splash';
+      // Auth resolved — leave splash
+      if (!isLoading && isSplash) return isLoggedIn ? '/budget' : '/login';
 
       if (!isLoggedIn && !isAuthRoute) return '/login';
       if (isLoggedIn && isAuthRoute) return '/budget';
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),

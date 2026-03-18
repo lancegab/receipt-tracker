@@ -11,7 +11,7 @@ final authStateProvider =
 class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   final ApiClient _apiClient;
 
-  AuthNotifier(this._apiClient) : super(const AsyncValue.data(null)) {
+  AuthNotifier(this._apiClient) : super(const AsyncValue.loading()) {
     _checkAuth();
   }
 
@@ -24,11 +24,12 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
           state = AsyncValue.data(
             UserModel.fromJson(response['data'] as Map<String, dynamic>),
           );
+          return;
         }
-      } catch (_) {
-        state = const AsyncValue.data(null);
-      }
+      } catch (_) {}
     }
+    // No token or auth failed — user is not logged in
+    state = const AsyncValue.data(null);
   }
 
   Future<void> loginWithEmail(String email, String password) async {
