@@ -147,10 +147,10 @@ class TransactionsScreen extends ConsumerWidget {
                         contentPadding: EdgeInsets.zero,
                         leading: CircleAvatar(
                           backgroundColor: txn.type == 'income'
-                              ? Colors.green.withOpacity(0.1)
+                              ? const Color(0xFF2E7D32).withOpacity(0.1)
                               : txn.type == 'transfer'
-                                  ? Colors.blue.withOpacity(0.1)
-                                  : Colors.red.withOpacity(0.1),
+                                  ? const Color(0xFFFFC107).withOpacity(0.15)
+                                  : const Color(0xFFE53935).withOpacity(0.1),
                           child: Icon(
                             txn.type == 'income'
                                 ? Icons.arrow_downward
@@ -158,10 +158,10 @@ class TransactionsScreen extends ConsumerWidget {
                                     ? Icons.swap_horiz
                                     : Icons.arrow_upward,
                             color: txn.type == 'income'
-                                ? Colors.green
+                                ? const Color(0xFF2E7D32)
                                 : txn.type == 'transfer'
-                                    ? Colors.blue
-                                    : Colors.red,
+                                    ? const Color(0xFFF57F17)
+                                    : const Color(0xFFE53935),
                             size: 20,
                           ),
                         ),
@@ -175,11 +175,11 @@ class TransactionsScreen extends ConsumerWidget {
                               DateTime.parse(txn.date)),
                         ),
                         trailing: Text(
-                          '${txn.type == 'income' ? '+' : '-'}${CurrencyFormatter.format(txn.amount)}',
+                          '${txn.type == 'income' ? '+' : '-'}${CurrencyFormatter.format(txn.amount, currency: userCurrency)}',
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: txn.type == 'income'
-                                ? Colors.green
+                                ? const Color(0xFF2E7D32)
                                 : null,
                           ),
                         ),

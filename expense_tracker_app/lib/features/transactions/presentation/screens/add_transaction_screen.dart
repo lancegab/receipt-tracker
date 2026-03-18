@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../providers/transactions_provider.dart';
 import '../../../../features/accounts/presentation/providers/accounts_provider.dart';
 import '../../../../features/categories/presentation/providers/categories_provider.dart';
+import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../core/extensions/context_extensions.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
@@ -88,6 +90,19 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   Widget build(BuildContext context) {
     final accountsAsync = ref.watch(accountsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
+    final userCurrency =
+        ref.watch(authStateProvider).valueOrNull?.defaultCurrency ?? 'PHP';
+
+    // Get currency symbol from selected account, fallback to user default
+    final selectedCurrency = accountsAsync.maybeWhen(
+      data: (accounts) {
+        if (_accountId == null) return userCurrency;
+        final acct = accounts.where((a) => a.id == _accountId).firstOrNull;
+        return acct?.currency ?? userCurrency;
+      },
+      orElse: () => userCurrency,
+    );
+    final currencySymbol = CurrencyFormatter.getSymbol(selectedCurrency);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Add Transaction')),
@@ -113,10 +128,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               // Amount
               TextFormField(
                 controller: _amountController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Amount',
-                  prefixText: '\$ ',
-                  prefixIcon: Icon(Icons.attach_money),
+                  prefixText: '$currencySymbol ',
+                  prefixIcon: const Icon(Icons.attach_money),
                 ),
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),

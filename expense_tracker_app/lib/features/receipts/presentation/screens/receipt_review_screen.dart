@@ -8,6 +8,7 @@ import '../../../../features/categories/presentation/providers/categories_provid
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/extensions/context_extensions.dart';
+import '../../../../features/auth/presentation/providers/auth_provider.dart';
 
 class ReceiptReviewScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? receiptData;
@@ -89,6 +90,8 @@ class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
   Widget build(BuildContext context) {
     final accountsAsync = ref.watch(accountsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
+    final userCurrency =
+        ref.watch(authStateProvider).valueOrNull?.defaultCurrency ?? 'PHP';
     final selectedCount =
         _receipt.lineItems.where((i) => i.isSelected).length;
     final selectedTotal = _receipt.lineItems
@@ -193,7 +196,7 @@ class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
                       children: [
                         if (item.quantity > 1)
                           Text(
-                              '${item.quantity} x ${CurrencyFormatter.format(item.unitPrice)}'),
+                              '${item.quantity} x ${CurrencyFormatter.format(item.unitPrice, currency: userCurrency)}'),
                         // Category selector
                         categoriesAsync.when(
                           loading: () => const SizedBox(),
@@ -229,7 +232,7 @@ class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
                       ],
                     ),
                     secondary: Text(
-                      CurrencyFormatter.format(item.totalPrice),
+                      CurrencyFormatter.format(item.totalPrice, currency: userCurrency),
                       style: context.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -260,7 +263,7 @@ class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
                     children: [
                       Text('$selectedCount items selected'),
                       Text(
-                        CurrencyFormatter.format(selectedTotal),
+                        CurrencyFormatter.format(selectedTotal, currency: userCurrency),
                         style: context.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),

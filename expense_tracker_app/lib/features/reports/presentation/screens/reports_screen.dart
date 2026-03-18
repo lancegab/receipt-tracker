@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/reports_provider.dart';
 import '../../../../core/extensions/context_extensions.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../../../../features/auth/presentation/providers/auth_provider.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -45,6 +47,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(reportsProvider);
+    final userCurrency =
+        ref.watch(authStateProvider).valueOrNull?.defaultCurrency ?? 'PHP';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Reports')),
@@ -79,19 +83,22 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     _SummaryCard(
                       label: 'Income',
                       amount: state.totalIncome,
-                      color: Colors.green,
+                      color: const Color(0xFF2E7D32),
+                      currency: userCurrency,
                     ),
                     const SizedBox(width: 8),
                     _SummaryCard(
                       label: 'Expense',
                       amount: state.totalExpense,
                       color: context.colorScheme.error,
+                      currency: userCurrency,
                     ),
                     const SizedBox(width: 8),
                     _SummaryCard(
                       label: 'Net',
                       amount: state.net,
-                      color: state.net >= 0 ? Colors.green : context.colorScheme.error,
+                      color: state.net >= 0 ? const Color(0xFF2E7D32) : context.colorScheme.error,
+                      currency: userCurrency,
                     ),
                   ],
                 ),
@@ -133,7 +140,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         BarChartGroupData(x: 0, barRods: [
                           BarChartRodData(
                             toY: state.totalIncome,
-                            color: Colors.green,
+                            color: const Color(0xFF2E7D32),
                             width: 30,
                             borderRadius: const BorderRadius.vertical(
                                 top: Radius.circular(4)),
@@ -183,16 +190,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   static final _pieColors = [
-    Colors.blue,
-    Colors.red,
-    Colors.green,
-    Colors.orange,
-    Colors.purple,
-    Colors.teal,
-    Colors.pink,
-    Colors.amber,
-    Colors.indigo,
-    Colors.cyan,
+    const Color(0xFF2E7D32), // money green
+    const Color(0xFFE53935), // logo red
+    const Color(0xFFFFC107), // logo gold
+    const Color(0xFF1B5E20), // dark green
+    const Color(0xFFFF8F00), // deep amber
+    const Color(0xFF212121), // cat black
+    const Color(0xFF43A047), // light green
+    const Color(0xFFD32F2F), // deep red
+    const Color(0xFFFFB300), // amber
+    const Color(0xFF66BB6A), // soft green
   ];
 
   List<PieChartSectionData> _buildPieSections(Map<String, double> breakdown) {
@@ -223,11 +230,13 @@ class _SummaryCard extends StatelessWidget {
   final String label;
   final double amount;
   final Color color;
+  final String currency;
 
   const _SummaryCard({
     required this.label,
     required this.amount,
     required this.color,
+    this.currency = 'PHP',
   });
 
   @override
@@ -240,12 +249,14 @@ class _SummaryCard extends StatelessWidget {
             children: [
               Text(label, style: Theme.of(context).textTheme.bodySmall),
               const SizedBox(height: 4),
-              Text(
-                '\$${amount.abs().toStringAsFixed(2)}',
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+              FittedBox(
+                child: Text(
+                  CurrencyFormatter.format(amount.abs(), currency: currency),
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ],
