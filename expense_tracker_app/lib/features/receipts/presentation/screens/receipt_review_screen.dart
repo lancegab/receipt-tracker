@@ -62,16 +62,21 @@ class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
       final hasReceiptId = _receipt.id.isNotEmpty;
 
       if (_saveMode == SaveMode.singleTotal) {
-        // Single transaction with total
+        // Single transaction with total, line items in notes
         final total =
             selectedItems.fold(0.0, (sum, i) => sum + i.totalPrice);
         final description = _receipt.merchantName ?? 'Receipt purchase';
+        final notesLines = selectedItems.map((i) {
+          final qty = i.quantity > 1 ? '${i.quantity}x ' : '';
+          return '$qty${i.description}: ${i.totalPrice.toStringAsFixed(2)}';
+        }).join('\n');
         await ref.read(transactionsProvider.notifier).createTransaction({
           'accountId': _selectedAccountId,
           'type': 'expense',
           'amount': total,
           'date': date,
           'description': description,
+          'notes': notesLines,
           if (_receipt.merchantName != null)
             'merchantName': _receipt.merchantName,
           if (hasReceiptId) 'receiptId': _receipt.id,
