@@ -13,7 +13,7 @@ import {
   categories,
   creditCardInstallments,
 } from '../db/schema.js';
-import { eq, and, sql, gte, lte, inArray } from 'drizzle-orm';
+import { eq, and, or, sql, gte, lte, inArray } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth.js';
 import {
   createBudgetSchema,
@@ -90,7 +90,77 @@ function getWeekNumber(day: number): number {
   return 4;
 }
 
+// Helper: get previous month string
+function previousMonth(month: string): string {
+  const [year, m] = month.split('-').map(Number);
+  if (m === 1) return `${year - 1}-12`;
+  return `${year}-${String(m - 1).padStart(2, '0')}`;
+}
+
 // ── Budget CRUD ────────────────────────────────────────────────
+
+// GET /api/budgets/items-for-month — all budget items for a month (for transaction picker)
+budgetsRouter.get('/items-for-month', async (c) => {
+  const user = c.get('user');
+  const month = c.req.query('month');
+  if (!month) {
+    throw new HTTPException(400, { message: 'month query param required (YYYY-MM)' });
+  }
+
+  // Get user's personal budgets for this month
+  const personalBudgets = await db
+    .select()
+    .from(budgets)
+    .where(and(eq(budgets.userId, user.id), eq(budgets.month, month)));
+
+  // Get group budgets for this month
+  const memberships = await db
+    .select({ groupId: budgetGroupMembers.groupId })
+    .from(budgetGroupMembers)
+    .where(eq(budgetGroupMembers.userId, user.id));
+
+  const groupBudgetsList =
+    memberships.length > 0
+      ? await db
+          .select()
+          .from(budgets)
+          .where(
+            and(
+              inArray(
+                budgets.groupId,
+                memberships.map((m) => m.groupId)
+              ),
+              eq(budgets.month, month)
+            )
+          )
+      : [];
+
+  const allBudgets = [...personalBudgets, ...groupBudgetsList];
+  const budgetIds = allBudgets.map((b) => b.id);
+
+  if (budgetIds.length === 0) {
+    return c.json({ success: true, data: [] });
+  }
+
+  const items = await db
+    .select()
+    .from(budgetItems)
+    .where(inArray(budgetItems.budgetId, budgetIds))
+    .orderBy(budgetItems.sortOrder);
+
+  // Enrich with budget name
+  const budgetMap = Object.fromEntries(allBudgets.map((b) => [b.id, b]));
+  const result = items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    budgetId: item.budgetId,
+    budgetName: budgetMap[item.budgetId]?.name || '',
+    budgetedAmount: item.budgetedAmount,
+    linkedAccountId: item.linkedAccountId,
+  }));
+
+  return c.json({ success: true, data: result });
+});
 
 // GET /api/budgets
 budgetsRouter.get('/', async (c) => {
@@ -329,12 +399,35 @@ budgetsRouter.get('/:id/summary', async (c) => {
     userIds = members.map((m) => m.userId);
   }
 
+  // Build account type map for credit card detection
+  const linkedAccountIds = items
+    .map((i) => i.linkedAccountId)
+    .filter(Boolean) as string[];
+  const linkedAccounts =
+    linkedAccountIds.length > 0
+      ? await db
+          .select({ id: accounts.id, type: accounts.type })
+          .from(accounts)
+          .where(inArray(accounts.id, linkedAccountIds))
+      : [];
+  const accountTypeMap = Object.fromEntries(
+    linkedAccounts.map((a) => [a.id, a.type])
+  );
+
+  // Previous month date range (for credit card projection)
+  const prevMonth = previousMonth(budget.month);
+  const prevRange = getMonthRange(prevMonth);
+
   const summaryItems = [];
   let totalBudgeted = 0;
   let totalSpent = 0;
 
   for (const item of items) {
     let autoSpent = 0;
+    let projectedBudget: number | null = null;
+    const isCreditCard =
+      item.linkedAccountId && accountTypeMap[item.linkedAccountId] === 'credit_card';
+
     const weeklyBreakdown: Record<
       number,
       { autoSpent: number; manualAdjustment: number }
@@ -345,35 +438,90 @@ budgetsRouter.get('/:id/summary', async (c) => {
       4: { autoSpent: 0, manualAdjustment: 0 },
     };
 
-    // Auto-calculate from transactions
-    if (item.linkedAccountId || item.linkedCategoryId) {
-      const conditions = [
-        inArray(transactions.userId, userIds),
-        gte(transactions.date, new Date(start)),
-        lte(transactions.date, new Date(end)),
-        eq(transactions.type, 'expense'),
-      ];
+    if (isCreditCard) {
+      // Credit card item: autoSpent = current month actual payments on this CC
+      const ccTxns = await db
+        .select({ amount: transactions.amount, date: transactions.date })
+        .from(transactions)
+        .where(
+          and(
+            inArray(transactions.userId, userIds),
+            eq(transactions.accountId, item.linkedAccountId!),
+            gte(transactions.date, new Date(start)),
+            lte(transactions.date, new Date(end)),
+            eq(transactions.type, 'expense')
+          )
+        );
+      for (const txn of ccTxns) {
+        const amt = parseFloat(txn.amount);
+        autoSpent += amt;
+        const week = getWeekNumber(new Date(txn.date).getDate());
+        weeklyBreakdown[week].autoSpent += amt;
+      }
 
+      // Projected budget = previous month's CC spending + this month's installments
+      const prevTxns = await db
+        .select({ amount: transactions.amount })
+        .from(transactions)
+        .where(
+          and(
+            inArray(transactions.userId, userIds),
+            eq(transactions.accountId, item.linkedAccountId!),
+            gte(transactions.date, new Date(prevRange.start)),
+            lte(transactions.date, new Date(prevRange.end)),
+            eq(transactions.type, 'expense')
+          )
+        );
+      let prevSpend = 0;
+      for (const t of prevTxns) prevSpend += parseFloat(t.amount);
+
+      // Installments due this month
+      let installmentsDue = 0;
+      const installments = await db
+        .select({ monthlyAmount: creditCardInstallments.monthlyAmount })
+        .from(creditCardInstallments)
+        .where(
+          and(
+            eq(creditCardInstallments.accountId, item.linkedAccountId!),
+            eq(creditCardInstallments.isActive, true),
+            lte(creditCardInstallments.startMonth, budget.month),
+            gte(creditCardInstallments.endMonth, budget.month)
+          )
+        );
+      for (const inst of installments) {
+        installmentsDue += parseFloat(inst.monthlyAmount);
+      }
+
+      projectedBudget = prevSpend + installmentsDue;
+    } else {
+      // Non-credit-card: match by budgetItemId (primary) OR legacy linkedAccountId/linkedCategoryId
+      const matchConditions: ReturnType<typeof eq>[] = [
+        eq(transactions.budgetItemId, item.id),
+      ];
       if (item.linkedAccountId) {
-        conditions.push(eq(transactions.accountId, item.linkedAccountId));
+        matchConditions.push(eq(transactions.accountId, item.linkedAccountId));
       }
       if (item.linkedCategoryId) {
-        conditions.push(eq(transactions.categoryId, item.linkedCategoryId));
+        matchConditions.push(eq(transactions.categoryId, item.linkedCategoryId));
       }
 
       const txns = await db
-        .select({
-          amount: transactions.amount,
-          date: transactions.date,
-        })
+        .select({ amount: transactions.amount, date: transactions.date })
         .from(transactions)
-        .where(and(...conditions));
+        .where(
+          and(
+            inArray(transactions.userId, userIds),
+            gte(transactions.date, new Date(start)),
+            lte(transactions.date, new Date(end)),
+            eq(transactions.type, 'expense'),
+            or(...matchConditions)
+          )
+        );
 
       for (const txn of txns) {
         const amt = parseFloat(txn.amount);
         autoSpent += amt;
-        const txnDate = new Date(txn.date);
-        const week = getWeekNumber(txnDate.getDate());
+        const week = getWeekNumber(new Date(txn.date).getDate());
         weeklyBreakdown[week].autoSpent += amt;
       }
     }
@@ -386,9 +534,9 @@ budgetsRouter.get('/:id/summary', async (c) => {
       }
     }
 
-    // Calculate installment amount for credit card items
+    // Calculate installment amount (for non-CC items that might have linked account installments)
     let installmentAmount = 0;
-    if (item.linkedAccountId) {
+    if (item.linkedAccountId && !isCreditCard) {
       const installments = await db
         .select({ monthlyAmount: creditCardInstallments.monthlyAmount })
         .from(creditCardInstallments)
@@ -400,34 +548,40 @@ budgetsRouter.get('/:id/summary', async (c) => {
             gte(creditCardInstallments.endMonth, budget.month)
           )
         );
-
       for (const inst of installments) {
         installmentAmount += parseFloat(inst.monthlyAmount);
       }
     }
 
     const manualSpent = parseFloat(item.manualSpent || '0');
-    // Sum weekly manual adjustments (negative = spending)
     const weeklyManualTotal = Object.values(weeklyBreakdown).reduce(
       (sum, w) => sum + Math.abs(w.manualAdjustment),
       0
     );
     const itemTotalSpent = autoSpent + manualSpent + weeklyManualTotal + installmentAmount;
     const budgetedAmount = parseFloat(item.budgetedAmount);
-    const remaining = budgetedAmount - itemTotalSpent;
+    // For CC items: use projectedBudget as the effective budget if no manual override
+    const effectiveBudget =
+      isCreditCard && projectedBudget !== null && budgetedAmount === 0
+        ? projectedBudget
+        : budgetedAmount;
+    const remaining = effectiveBudget - itemTotalSpent;
 
-    totalBudgeted += budgetedAmount;
+    totalBudgeted += effectiveBudget;
     totalSpent += itemTotalSpent;
 
     summaryItems.push({
       id: item.id,
       name: item.name,
       budgetedAmount: budgetedAmount.toFixed(2),
+      projectedBudget: projectedBudget !== null ? projectedBudget.toFixed(2) : null,
+      effectiveBudget: effectiveBudget.toFixed(2),
       linkedAccountId: item.linkedAccountId,
       linkedCategoryId: item.linkedCategoryId,
+      isCreditCard: !!isCreditCard,
       manualSpent: manualSpent.toFixed(2),
       autoSpent: autoSpent.toFixed(2),
-      installmentAmount: installmentAmount.toFixed(2),
+      installmentAmount: isCreditCard ? '0.00' : installmentAmount.toFixed(2),
       totalSpent: itemTotalSpent.toFixed(2),
       remaining: remaining.toFixed(2),
       sortOrder: item.sortOrder,

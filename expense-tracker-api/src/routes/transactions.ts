@@ -153,6 +153,7 @@ transactionsRouter.post(
       notes: body.notes || null,
       receiptId: body.receiptId || null,
       transferToAccountId: body.transferToAccountId || null,
+      budgetItemId: body.budgetItemId || null,
       isPending: body.isPending,
     });
 
@@ -206,6 +207,7 @@ transactionsRouter.post(
         notes: txn.notes || null,
         receiptId: txn.receiptId || null,
         transferToAccountId: txn.transferToAccountId || null,
+        budgetItemId: txn.budgetItemId || null,
         isPending: txn.isPending,
       });
 
@@ -284,6 +286,7 @@ transactionsRouter.patch(
     if (body.merchantName !== undefined)
       updateData.merchantName = body.merchantName;
     if (body.categoryId !== undefined) updateData.categoryId = body.categoryId;
+    if (body.budgetItemId !== undefined) updateData.budgetItemId = body.budgetItemId;
     if (body.notes !== undefined) updateData.notes = body.notes;
     if (body.isPending !== undefined) updateData.isPending = body.isPending;
 

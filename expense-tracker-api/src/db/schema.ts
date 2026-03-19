@@ -140,6 +140,10 @@ export const transactions = mysqlTable(
     transferToAccountId: char('transfer_to_account_id', {
       length: 36,
     }).references(() => accounts.id, { onDelete: 'set null' }),
+    budgetItemId: char('budget_item_id', { length: 36 }).references(
+      () => budgetItems.id,
+      { onDelete: 'set null' }
+    ),
     isPending: boolean('is_pending').default(false),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
@@ -149,6 +153,7 @@ export const transactions = mysqlTable(
     accountIdx: index('idx_account').on(table.accountId),
     categoryIdx: index('idx_category').on(table.categoryId),
     receiptIdx: index('idx_receipt').on(table.receiptId),
+    budgetItemIdx: index('idx_budget_item').on(table.budgetItemId),
   })
 );
 

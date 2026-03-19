@@ -66,6 +66,7 @@ export const createTransactionSchema = z.object({
   notes: z.string().optional(),
   receiptId: z.string().uuid().optional(),
   transferToAccountId: z.string().uuid().optional(),
+  budgetItemId: z.string().uuid().optional(),
   isPending: z.boolean().default(false),
 });
 
