@@ -13,6 +13,10 @@
 - **Auto-deploy**: GitHub webhook fires on `push` to `main`, but Coolify does NOT auto-build. Use the **Redeploy** button in the Coolify dashboard or trigger manually. All past deploys show "Manual".
 - **Git source**: Public GitHub (`lancegab/receipt-tracker`, branch `main`)
 - **Linked DB**: MySQL database managed by Coolify (`mysql-database-s4wsks4ckc4sk4swc80kcso8`)
+- **Server**: `5.189.163.43` (SSH: `root@5.189.163.43`)
+- **App container**: `kggggkgcs04ws88cgogs4g8c-*`
+- **DB container**: `s4wsks4ckc4sk4swc80kcso8` (MySQL 8, database: `expense_tracker`, user: `mysql`)
+- **DB backup**: `ssh root@5.189.163.43 "docker exec s4wsks4ckc4sk4swc80kcso8 mysqldump -u mysql -p'<password>' expense_tracker > /root/backup.sql"`
 
 ### DB Schema Push
 The Dockerfile CMD attempts `drizzle-kit push` on startup but it may fail due to version mismatch (drizzle-kit is a devDependency). When adding new tables:
