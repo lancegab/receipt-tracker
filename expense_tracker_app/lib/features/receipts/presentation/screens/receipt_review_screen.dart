@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../shared/models/receipt_model.dart';
 import '../../../../features/transactions/presentation/providers/transactions_provider.dart';
 import '../../../../features/accounts/presentation/providers/accounts_provider.dart';
-import '../../../../features/categories/presentation/providers/categories_provider.dart';
+import '../../../../features/budget/presentation/providers/budget_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/extensions/context_extensions.dart';
@@ -81,7 +81,7 @@ class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
             'merchantName': _receipt.merchantName,
           if (hasReceiptId) 'receiptId': _receipt.id,
           if (selectedItems.first.selectedCategoryId != null)
-            'categoryId': selectedItems.first.selectedCategoryId,
+            'budgetItemId': selectedItems.first.selectedCategoryId,
         });
 
         if (mounted) {
@@ -100,7 +100,7 @@ class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
               'merchantName': _receipt.merchantName,
             if (hasReceiptId) 'receiptId': _receipt.id,
             if (item.selectedCategoryId != null)
-              'categoryId': item.selectedCategoryId,
+              'budgetItemId': item.selectedCategoryId,
           };
         }).toList();
 
@@ -129,7 +129,9 @@ class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
   @override
   Widget build(BuildContext context) {
     final accountsAsync = ref.watch(accountsProvider);
-    final categoriesAsync = ref.watch(categoriesProvider);
+    final now = DateTime.now();
+    final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    final budgetItemsAsync = ref.watch(budgetItemsForMonthProvider(month));
     final userCurrency =
         ref.watch(authStateProvider).valueOrNull?.defaultCurrency ?? 'PHP';
     final selectedCount =
@@ -237,27 +239,24 @@ class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
                         if (item.quantity > 1)
                           Text(
                               '${item.quantity} x ${CurrencyFormatter.format(item.unitPrice, currency: userCurrency)}'),
-                        // Category selector
-                        categoriesAsync.when(
+                        // Budget item selector
+                        budgetItemsAsync.when(
                           loading: () => const SizedBox(),
                           error: (_, __) => const SizedBox(),
-                          data: (categories) {
-                            final expenseCats = categories
-                                .where((c) => c.type == 'expense')
-                                .toList();
+                          data: (budgetItems) {
                             return DropdownButton<String>(
                               value: item.selectedCategoryId,
                               hint: Text(
-                                item.categorySuggestion ?? 'Select category',
+                                'Budget item',
                                 style: context.textTheme.bodySmall,
                               ),
                               isExpanded: true,
                               underline: const SizedBox(),
                               isDense: true,
-                              items: expenseCats
-                                  .map((c) => DropdownMenuItem(
-                                        value: c.id,
-                                        child: Text(c.name,
+                              items: budgetItems
+                                  .map((bi) => DropdownMenuItem(
+                                        value: bi.id,
+                                        child: Text(bi.name,
                                             style:
                                                 context.textTheme.bodySmall),
                                       ))

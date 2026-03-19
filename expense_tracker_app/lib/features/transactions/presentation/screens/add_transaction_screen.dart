@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/transactions_provider.dart';
 import '../../../../features/accounts/presentation/providers/accounts_provider.dart';
-import '../../../../features/categories/presentation/providers/categories_provider.dart';
+import '../../../../features/budget/presentation/providers/budget_provider.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -27,7 +27,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   String _type = 'expense';
   String? _accountId;
-  String? _categoryId;
+  String? _budgetItemId;
   String? _transferToAccountId;
   DateTime _date = DateTime.now();
   bool _isLoading = false;
@@ -45,7 +45,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _merchantController.text = extra.merchantName ?? '';
       _type = extra.type;
       _accountId = extra.accountId;
-      _categoryId = extra.categoryId;
+      _budgetItemId = extra.budgetItemId;
       _transferToAccountId = extra.transferToAccountId;
       _date = DateTime.tryParse(extra.date) ?? DateTime.now();
     }
@@ -87,7 +87,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         'description': _descriptionController.text.trim(),
         if (_merchantController.text.isNotEmpty)
           'merchantName': _merchantController.text.trim(),
-        if (_categoryId != null) 'categoryId': _categoryId,
+        if (_budgetItemId != null) 'budgetItemId': _budgetItemId,
         if (_notesController.text.isNotEmpty)
           'notes': _notesController.text.trim(),
         if (_type == 'transfer' && _transferToAccountId != null)
@@ -115,7 +115,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   @override
   Widget build(BuildContext context) {
     final accountsAsync = ref.watch(accountsProvider);
-    final categoriesAsync = ref.watch(categoriesProvider);
+    final month =
+        '${_date.year}-${_date.month.toString().padLeft(2, '0')}';
+    final budgetItemsAsync = ref.watch(budgetItemsForMonthProvider(month));
     final userCurrency =
         ref.watch(authStateProvider).valueOrNull?.defaultCurrency ?? 'PHP';
 
@@ -234,29 +236,38 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 ),
               ],
               const SizedBox(height: 16),
-              // Category
+              // Budget Item (replaces Category)
               if (_type != 'transfer')
-                categoriesAsync.when(
+                budgetItemsAsync.when(
                   loading: () => const LinearProgressIndicator(),
-                  error: (_, __) => const Text('Error loading categories'),
-                  data: (categories) {
-                    final filtered = categories
-                        .where((c) =>
-                            c.type == (_type == 'income' ? 'income' : 'expense'))
-                        .toList();
+                  error: (_, __) => const Text('No budget for this month'),
+                  data: (items) {
+                    // Reset selection if not in the list
+                    if (_budgetItemId != null &&
+                        !items.any((i) => i.id == _budgetItemId)) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) setState(() => _budgetItemId = null);
+                      });
+                    }
                     return DropdownButtonFormField<String>(
-                      value: _categoryId,
+                      value: items.any((i) => i.id == _budgetItemId)
+                          ? _budgetItemId
+                          : null,
                       decoration: const InputDecoration(
-                        labelText: 'Category',
-                        prefixIcon: Icon(Icons.category),
+                        labelText: 'Budget Item',
+                        prefixIcon: Icon(Icons.calculate_outlined),
                       ),
-                      items: filtered
-                          .map((c) => DropdownMenuItem(
-                                value: c.id,
-                                child: Text(c.name),
+                      items: items
+                          .map((i) => DropdownMenuItem(
+                                value: i.id,
+                                child: Text(
+                                  i.budgetName.isNotEmpty
+                                      ? '${i.name} (${i.budgetName})'
+                                      : i.name,
+                                ),
                               ))
                           .toList(),
-                      onChanged: (v) => setState(() => _categoryId = v),
+                      onChanged: (v) => setState(() => _budgetItemId = v),
                     );
                   },
                 ),

@@ -12,6 +12,7 @@ class TransactionModel {
   final String? notes;
   final String? receiptId;
   final String? transferToAccountId;
+  final String? budgetItemId;
   final bool isPending;
   final DateTime? createdAt;
 
@@ -29,6 +30,7 @@ class TransactionModel {
     this.notes,
     this.receiptId,
     this.transferToAccountId,
+    this.budgetItemId,
     this.isPending = false,
     this.createdAt,
   });
@@ -53,6 +55,8 @@ class TransactionModel {
           json['receiptId'] as String? ?? json['receipt_id'] as String?,
       transferToAccountId: json['transferToAccountId'] as String? ??
           json['transfer_to_account_id'] as String?,
+      budgetItemId: json['budgetItemId'] as String? ??
+          json['budget_item_id'] as String?,
       isPending: json['isPending'] as bool? ??
           json['is_pending'] as bool? ??
           false,
@@ -75,6 +79,7 @@ class TransactionModel {
         if (receiptId != null) 'receiptId': receiptId,
         if (transferToAccountId != null)
           'transferToAccountId': transferToAccountId,
+        if (budgetItemId != null) 'budgetItemId': budgetItemId,
         'isPending': isPending,
       };
 }

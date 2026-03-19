@@ -37,6 +37,7 @@ class ApiConstants {
 
   // Budget endpoints
   static const String budgets = '/budgets';
+  static const String budgetItemsForMonth = '/budgets/items-for-month';
   static const String budgetGroups = '/budget-groups';
   static const String installments = '/installments';
 }

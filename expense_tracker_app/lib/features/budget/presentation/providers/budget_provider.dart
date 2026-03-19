@@ -9,6 +9,43 @@ final selectedMonthProvider = StateProvider<String>((ref) {
   return '${now.year}-${now.month.toString().padLeft(2, '0')}';
 });
 
+/// Budget items for a given month — used by the transaction form picker
+final budgetItemsForMonthProvider =
+    FutureProvider.family<List<BudgetItemSummary>, String>((ref, month) async {
+  final apiClient = ref.read(apiClientProvider);
+  final response = await apiClient.get(
+    ApiConstants.budgetItemsForMonth,
+    queryParameters: {'month': month},
+  );
+  return (response['data'] as List)
+      .map((e) => BudgetItemSummary.fromJson(e as Map<String, dynamic>))
+      .toList();
+});
+
+/// Lightweight model for the transaction budget item picker
+class BudgetItemSummary {
+  final String id;
+  final String name;
+  final String budgetId;
+  final String budgetName;
+
+  const BudgetItemSummary({
+    required this.id,
+    required this.name,
+    required this.budgetId,
+    required this.budgetName,
+  });
+
+  factory BudgetItemSummary.fromJson(Map<String, dynamic> json) {
+    return BudgetItemSummary(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      budgetId: json['budgetId'] as String? ?? json['budget_id'] as String? ?? '',
+      budgetName: json['budgetName'] as String? ?? json['budget_name'] as String? ?? '',
+    );
+  }
+}
+
 final budgetsProvider =
     StateNotifierProvider<BudgetsNotifier, AsyncValue<List<BudgetModel>>>(
         (ref) {
