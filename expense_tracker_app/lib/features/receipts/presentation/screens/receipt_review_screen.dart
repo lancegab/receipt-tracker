@@ -59,6 +59,8 @@ class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
       final date = _receipt.transactionDate ??
           DateFormatter.formatApiDate(DateTime.now());
 
+      final hasReceiptId = _receipt.id.isNotEmpty;
+
       if (_saveMode == SaveMode.singleTotal) {
         // Single transaction with total
         final total =
@@ -70,8 +72,9 @@ class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
           'amount': total,
           'date': date,
           'description': description,
-          'merchantName': _receipt.merchantName,
-          'receiptId': _receipt.id,
+          if (_receipt.merchantName != null)
+            'merchantName': _receipt.merchantName,
+          if (hasReceiptId) 'receiptId': _receipt.id,
           if (selectedItems.first.selectedCategoryId != null)
             'categoryId': selectedItems.first.selectedCategoryId,
         });
@@ -82,14 +85,15 @@ class _ReceiptReviewScreenState extends ConsumerState<ReceiptReviewScreen> {
       } else {
         // Individual line item transactions
         final transactions = selectedItems.map((item) {
-          return {
+          return <String, dynamic>{
             'accountId': _selectedAccountId,
             'type': 'expense',
             'amount': item.totalPrice,
             'date': date,
             'description': item.description,
-            'merchantName': _receipt.merchantName,
-            'receiptId': _receipt.id,
+            if (_receipt.merchantName != null)
+              'merchantName': _receipt.merchantName,
+            if (hasReceiptId) 'receiptId': _receipt.id,
             if (item.selectedCategoryId != null)
               'categoryId': item.selectedCategoryId,
           };
