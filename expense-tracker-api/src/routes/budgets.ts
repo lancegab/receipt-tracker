@@ -195,15 +195,33 @@ budgetsRouter.get('/', async (c) => {
   }
 
   // Personal budgets
-  const conditions = [eq(budgets.userId, user.id)];
-  if (month) conditions.push(eq(budgets.month, month));
+  const personalConditions = [eq(budgets.userId, user.id)];
+  if (month) personalConditions.push(eq(budgets.month, month));
 
-  const result = await db
+  const personalBudgets = await db
     .select()
     .from(budgets)
-    .where(and(...conditions));
+    .where(and(...personalConditions));
 
-  return c.json({ success: true, data: result });
+  // Also include group budgets the user is a member of
+  const memberships = await db
+    .select({ groupId: budgetGroupMembers.groupId })
+    .from(budgetGroupMembers)
+    .where(eq(budgetGroupMembers.userId, user.id));
+
+  let groupBudgets: typeof personalBudgets = [];
+  if (memberships.length > 0) {
+    const groupIds = memberships.map((m) => m.groupId);
+    const groupConditions = [inArray(budgets.groupId, groupIds)];
+    if (month) groupConditions.push(eq(budgets.month, month));
+
+    groupBudgets = await db
+      .select()
+      .from(budgets)
+      .where(and(...groupConditions));
+  }
+
+  return c.json({ success: true, data: [...personalBudgets, ...groupBudgets] });
 });
 
 // POST /api/budgets
