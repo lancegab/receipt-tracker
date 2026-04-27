@@ -1,5 +1,5 @@
 name: expense_tracker_app
-description: AI-powered expense tracker with receipt scanning
+description: "Stash Dash — Your Wealth Dashboard"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -27,6 +27,7 @@ dependencies:
   local_auth: ^2.2.0
   flutter_secure_storage: ^9.0.0
   google_sign_in: ^6.2.0
+  google_fonts: ^6.2.1
   freezed_annotation: ^2.4.1
   json_annotation: ^4.8.1
   get_it: ^7.6.7
@@ -36,6 +37,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.14.3
   build_runner: ^2.4.8
   riverpod_generator: ^2.4.0
   freezed: ^2.4.6
@@ -44,6 +46,13 @@ dev_dependencies:
   mockito: ^5.4.4
   integration_test:
     sdk: flutter
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/logo.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/logo.png"
 
 flutter:
   uses-material-design: true

@@ -18,7 +18,7 @@ function createTransporter() {
   });
 }
 
-const FROM = process.env.SMTP_FROM || 'noreply@expensetracker.app';
+const FROM = process.env.SMTP_FROM || 'noreply@stashdash.app';
 
 export async function sendPasswordResetEmail(
   email: string,
@@ -28,9 +28,9 @@ export async function sendPasswordResetEmail(
 
   const html = `
     <h2>Password Reset</h2>
-    <p>You requested a password reset for your Expense Tracker account.</p>
+    <p>You requested a password reset for your Stash Dash account.</p>
     <p>Click the link below to reset your password. This link expires in 1 hour.</p>
-    <p><a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#6750A4;color:white;text-decoration:none;border-radius:8px;">Reset Password</a></p>
+    <p><a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#2E7D32;color:white;text-decoration:none;border-radius:8px;">Reset Password</a></p>
     <p>If you didn't request this, you can safely ignore this email.</p>
   `;
 
@@ -44,7 +44,7 @@ export async function sendPasswordResetEmail(
   await transporter.sendMail({
     from: FROM,
     to: email,
-    subject: 'Password Reset - Expense Tracker',
+    subject: 'Password Reset - Stash Dash',
     html,
   });
 }

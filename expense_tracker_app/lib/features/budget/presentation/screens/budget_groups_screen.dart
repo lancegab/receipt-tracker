@@ -148,7 +148,7 @@ class _InvitationCard extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.check, color: Colors.green),
+              icon: const Icon(Icons.check, color: const Color(0xFF2E7D32)),
               onPressed: () async {
                 try {
                   await ref

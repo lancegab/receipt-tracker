@@ -64,6 +64,11 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
             onPressed: () => context.push('/installments'),
           ),
           IconButton(
+            icon: const Icon(Icons.repeat),
+            tooltip: 'Recurring Bills',
+            onPressed: () => context.push('/recurring'),
+          ),
+          IconButton(
             icon: const Icon(Icons.group),
             tooltip: 'Budget Groups',
             onPressed: () => context.push('/groups'),

@@ -69,7 +69,7 @@ class BiometricNotifier extends StateNotifier<BiometricState> {
   Future<bool> authenticate() async {
     try {
       final result = await _localAuth.authenticate(
-        localizedReason: 'Authenticate to access Expense Tracker',
+        localizedReason: 'Authenticate to access Stash Dash',
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: false,

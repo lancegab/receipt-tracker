@@ -1,7 +1,8 @@
 import '../utils/currency_formatter.dart';
 
 class AppConstants {
-  static const String appName = 'Expense Tracker';
+  static const String appName = 'Stash Dash';
+  static const String appTagline = 'Your Wealth Dashboard';
   static const String defaultCurrency = 'PHP';
   static const int maxImageSizeBytes = 500 * 1024;
   static const int maxImageDimension = 2048;
